@@ -1,0 +1,29 @@
+version: "3.9"
+
+services:
+  analizer-ai:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o}
+      - CONVERSION_MODE=${CONVERSION_MODE:-local}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - AUDIT_LOG_PATH=data/audit.jsonl
+      - LOCAL_ONLY_MODE=${LOCAL_ONLY_MODE:-false}
+    volumes:
+      - analizer_data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  analizer_data:
+    driver: local

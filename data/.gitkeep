@@ -1,0 +1,2 @@
+# data/.gitkeep — ensures the data/ directory is tracked by git.
+# audit.jsonl and converted/ subdirectory are created at runtime.
