@@ -31,7 +31,7 @@ Stop here if zero valid files are found.
 
 Ask the user which UI/mode to use:
 - **CLI** (default): `python -m app analyze`
-- **Chainlit UI**: `chainlit run app/ui/chainlit_app.py`
+- **React UI** (production): `make run-api` (serves built `ui/dist/`)
 - **DevUI** (dev/debug): `python app/ui/devui_app.py`
 
 ## Step 4 — Run the analysis (CLI mode)
@@ -59,4 +59,4 @@ Read `./reports/report.md` and provide:
 Suggest:
 - Which analysis type was detected and whether it was correct
 - Whether to re-run with a different prompt or analysis type
-- Whether to open the Chainlit UI for a richer view: `chainlit run app/ui/chainlit_app.py`
+- Whether to open the React UI for a richer view: run `make run-api` and visit http://localhost:8000

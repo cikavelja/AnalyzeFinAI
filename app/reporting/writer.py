@@ -29,7 +29,7 @@ def write_markdown_report(result: AnalysisResult, output_path: str) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
 
     lines: list[str] = [
-        f"# Analysis Report — {result.analysis_type.upper()}",
+        f"# Analysis Report — {str(result.analysis_type).upper()}",
         "",
         f"**Request ID:** `{result.request_id}`",
         f"**Completed:** {result.completed_at.isoformat()}",

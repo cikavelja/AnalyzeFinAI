@@ -17,7 +17,12 @@ build/
 
 # Data / reports (local only)
 data/audit.jsonl
+data/uploads/
+data/converted/
 reports/
+
+# UI
+ui/node_modules/
 
 # IDE
 .vscode/

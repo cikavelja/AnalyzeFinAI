@@ -17,7 +17,7 @@ import numpy as np
 import pandas as pd
 
 from app.exceptions import CalculationError
-from app.models.financial import FinancialMetrics
+from app.models.financial import AnomalyRecord, FinancialMetrics
 
 
 # ---------------------------------------------------------------------------
@@ -101,9 +101,11 @@ def calculate_metrics(df: pd.DataFrame) -> FinancialMetrics:
         gp_series = pd.to_numeric(df["gross_profit"], errors="coerce")
         metrics.gross_profit = _safe_float(gp_series.iloc[-1])
 
-    # ── YoY Revenue Growth ─────────────────────────────────────────────────
+    # ── YoY Revenue Growth, CAGR, Trend Slopes ────────────────────────────
     if "revenue" in df.columns:
         rev_series = pd.to_numeric(df["revenue"], errors="coerce").dropna()
+
+        # YoY Revenue Growth
         if len(rev_series) >= 2:
             prior = float(rev_series.iloc[-2])
             current = float(rev_series.iloc[-1])
@@ -115,26 +117,36 @@ def calculate_metrics(df: pd.DataFrame) -> FinancialMetrics:
         else:
             warnings.append("Need at least two revenue periods to compute YoY growth.")
 
-    # ── CAGR ───────────────────────────────────────────────────────────────
-    if "revenue" in df.columns:
-        rev_series = pd.to_numeric(df["revenue"], errors="coerce").dropna()
+        # CAGR
         if len(rev_series) >= 2:
             start_val = float(rev_series.iloc[0])
             end_val = float(rev_series.iloc[-1])
             n_years = len(rev_series) - 1
             if start_val > 0 and end_val > 0:
-                metrics.cagr = (end_val / start_val) ** (1 / n_years) - 1
+                try:
+                    metrics.cagr = (end_val / start_val) ** (1 / n_years) - 1
+                except (ValueError, ZeroDivisionError):
+                    metrics.cagr = None
+                    warnings.append("CAGR computation failed for edge-case inputs.")
             else:
                 metrics.cagr = None
                 warnings.append("Start or end revenue ≤ 0 — CAGR is undefined.")
 
-    # ── Trend Slopes ───────────────────────────────────────────────────────
-    if "revenue" in df.columns:
-        rev_series = pd.to_numeric(df["revenue"], errors="coerce").dropna()
+        # Trend slope
         if len(rev_series) >= 2:
             metrics.revenue_trend_slope = float(
                 np.polyfit(range(len(rev_series)), rev_series.values, 1)[0]
             )
+
+        # Anomaly detection
+        if len(rev_series) >= 3:
+            mean = rev_series.mean()
+            std = rev_series.std()
+            if std > 0:
+                z_scores = (rev_series - mean) / std
+                anomaly_mask = z_scores.abs() > 2.5
+                for idx, val in rev_series[anomaly_mask].items():
+                    metrics.anomalies.append(AnomalyRecord(period=str(idx), value=float(val)))
 
     if "gross_profit" in df.columns:
         gp_series = pd.to_numeric(df["gross_profit"], errors="coerce").dropna()
@@ -160,16 +172,7 @@ def calculate_metrics(df: pd.DataFrame) -> FinancialMetrics:
             warnings.append("Current liabilities is zero — current_ratio is undefined.")
 
     # ── Anomaly Detection ──────────────────────────────────────────────────
-    if "revenue" in df.columns:
-        rev_series = pd.to_numeric(df["revenue"], errors="coerce").dropna()
-        if len(rev_series) >= 3:
-            mean = rev_series.mean()
-            std = rev_series.std()
-            if std > 0:
-                z_scores = (rev_series - mean) / std
-                anomaly_mask = z_scores.abs() > 2.5
-                for idx, val in rev_series[anomaly_mask].items():
-                    metrics.anomalies.append({"period": str(idx), "value": float(val)})
+    # (handled above in the combined revenue block)
 
     metrics.warnings = warnings
     return metrics

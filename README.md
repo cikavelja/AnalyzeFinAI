@@ -1,7 +1,7 @@
 # AnalizerAI
 
 > AI-powered document analysis platform integrating Microsoft Agent Framework (MAF),
-> Chainlit, and a deterministic financial calculation engine.
+> FastAPI, React, and a deterministic financial calculation engine.
 
 ---
 
@@ -28,7 +28,8 @@ AnalizerAI analyses financial, legal, audit, and general documents using:
 - **MAF Agents** (`OrchestratorAgent`, `AnalystAgent`, `ReviewerAgent`) for orchestrated,
   multi-step reasoning.
 - **Deterministic financial engine** (`app/financial/calculator.py`) — no LLM arithmetic.
-- **Chainlit UI** for production chat-based interaction.
+- **React + TypeScript + Tailwind CSS** frontend for production interaction.
+- **FastAPI** REST API (`GET /healthz`, `POST /api/v1/analyze`).
 - **MAF DevUI** for development-time agent inspection and workflow tracing.
 - **Append-only audit log** (JSONL) for every pipeline step.
 
@@ -37,22 +38,30 @@ AnalizerAI analyses financial, legal, audit, and general documents using:
 ## Architecture
 
 ```
-User ──► Chainlit UI ──► OrchestratorAgent
-                              │
-              ┌───────────────┼───────────────┐
-              ▼               ▼               ▼
-         AnalystAgent    ReviewerAgent   AnalysisWorkflow
-              │
-     ┌────────┴────────┐
-     ▼                 ▼
- calculator.py    SummaryAnalyzer
- (deterministic)  (LLM narrative)
+Browser ►►► React UI (Vite + Tailwind, port 5173 dev / static in prod)
+                 │  HTTP fetch
+                 ▼
+            FastAPI (port 8000)
+            GET  /healthz
+            POST /api/v1/analyze
+                 │
+        OrchestratorAgent
+               │
+   ┌──────────┼───────────┐
+   ▼           ▼           ▼
+AnalystAgent  ReviewerAgent  AnalysisWorkflow
+   │
+┌──┴──────────────┐
+▼                 ▼
+calculator.py    SummaryAnalyzer
+(deterministic)  (LLM narrative)
 ```
 
 **Layer responsibilities:**
 
 | Layer | Path | Responsibility |
 |-------|------|----------------|
+| API | `app/api/` | FastAPI REST endpoints, CORS, static file serving |
 | Ingestion | `app/ingestion/` | File validation, type detection, metadata creation |
 | Conversion | `app/conversion/` | Text/Markdown extraction (local or MCP) |
 | Chunking | `app/chunking/` | Split text into overlapping DocumentChunks |
@@ -62,7 +71,8 @@ User ──► Chainlit UI ──► OrchestratorAgent
 | Agents | `app/agents/` | MAF agent instances with tool functions |
 | Workflows | `app/workflows/` | MAF sequential pipeline orchestration |
 | Audit | `app/audit/` | Append-only JSONL audit logger |
-| UI | `app/ui/` | Chainlit (prod) + DevUI (dev only) |
+| UI (React) | `ui/` | React + TypeScript + Tailwind CSS frontend |
+| UI (Dev) | `app/ui/` | MAF DevUI dev-only launcher |
 
 ---
 
@@ -118,14 +128,32 @@ make test          # Run pytest
 
 ## Running the UI
 
-### Production (Chainlit)
+### Production — FastAPI + React (built)
 
 ```bash
-make run-ui
+# 1. Build the React frontend
+cd ui && npm run build && cd ..
+
+# 2. Start the API server (serves React static files too)
+make run-api
 # → http://localhost:8000
 ```
 
-### Development (MAF DevUI) — dev only
+### Development — API + React (hot-reload)
+
+Run each in a separate terminal:
+
+```bash
+# Terminal 1 — FastAPI with auto-reload
+make run-api
+# → http://localhost:8000/api/v1/analyze
+
+# Terminal 2 — Vite dev server with HMR
+make run-react
+# → http://localhost:5173
+```
+
+### Development — MAF DevUI (dev only)
 
 ```bash
 make run-devui
@@ -174,7 +202,7 @@ Sample documents for integration tests go in `tests/fixtures/sample_docs/`.
 cd docker
 docker-compose up --build
 
-# The Chainlit UI is available at http://localhost:8000
+# The React UI + FastAPI are available at http://localhost:8000
 ```
 
 Environment variables are passed via `.env` or Docker Compose environment block.
@@ -190,6 +218,10 @@ app/
 │   ├── analyst_agent.py
 │   └── reviewer_agent.py
 ├── analyzers/       # Document analyzers (LLM narrative)
+├── api/             # FastAPI app, routes, schemas
+│   ├── main.py
+│   ├── routes/      # health.py, analysis.py
+│   └── schemas/     # Pydantic request/response schemas
 ├── audit/           # Append-only JSONL audit logger
 ├── chunking/        # Text chunker
 ├── config.py        # pydantic-settings singleton
@@ -202,9 +234,12 @@ app/
 ├── reporting/       # Report writer (Markdown + JSON)
 ├── routing/         # Keyword-based prompt router
 ├── storage/         # Filesystem storage backend
-├── ui/              # Chainlit (prod) + DevUI (dev)
+├── ui/              # MAF DevUI dev-only launcher
 ├── validation/      # Result validator
 └── workflows/       # MAF workflow orchestration
+ui/
+├── src/             # React + TypeScript components and API client
+└── dist/            # Built assets (generated, gitignored)
 tests/
 ├── unit/            # Unit tests (no real APIs)
 └── fixtures/        # Sample documents

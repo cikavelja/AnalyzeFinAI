@@ -50,6 +50,7 @@ If implementing agents or workflows:
 - Read `.github/instructions/maf-agents.instructions.md` first.
 - Agent names are PascalCase. Tools are `async def` with precise docstrings.
 - DevUI launch (`app/ui/devui_app.py`) is dev-only — never in production paths.
+- Production UI is React (`ui/`) served as static files by FastAPI. No Chainlit.
 
 ## After Implementing
 
@@ -78,7 +79,10 @@ app/reporting/{__init__,writer}.py
 app/agents/{__init__,orchestrator_agent,analyst_agent,reviewer_agent}.py
 app/workflows/{__init__,analysis_workflow}.py
 app/audit/{__init__,logger}.py
-app/ui/{__init__,devui_app,chainlit_app,handlers,components}.py
+app/ui/{__init__,devui_app}.py
+ui/src/{main,App}.tsx
+ui/src/api/client.ts
+ui/src/components/{Header,AnalysisForm,AnalysisResult,LoadingSpinner}.tsx
 tests/unit/{__init__,test_detector,test_validator,test_router,test_calculator,test_chunker}.py
 tests/fixtures/sample_docs/.gitkeep
 docker/Dockerfile, docker/docker-compose.yml

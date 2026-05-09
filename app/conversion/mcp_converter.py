@@ -5,44 +5,52 @@ if the MCP server is unreachable.
 """
 from __future__ import annotations
 
+from pathlib import Path
 from uuid import UUID
 
 import httpx
 import structlog
 
+from app.audit.logger import audit_logger
 from app.config import settings
 from app.conversion.base import ConversionResult
 from app.exceptions import ConversionError
+from app.models.audit import AuditEvent
 
 logger = structlog.get_logger(__name__)
-
-_MCP_ENDPOINT = "http://localhost:3001/convert"  # Override via env if needed
 
 
 class MCPConverter:
     """Converts documents via the MarkItDown MCP server."""
 
-    def __init__(self, endpoint: str = _MCP_ENDPOINT) -> None:
-        self._endpoint = endpoint
+    def __init__(self, endpoint: str | None = None) -> None:
+        self._endpoint = endpoint or settings.mcp_endpoint
 
     async def convert(self, file_path: str, document_id: UUID) -> ConversionResult:
         """Send *file_path* to the MCP server and return the markdown result.
 
         Raises:
-            ConversionError: if the server is unreachable or returns an error.
+            ConversionError: if local_only_mode is set, the server is unreachable,
+                             or the server returns an error.
         """
         if settings.local_only_mode:
             raise ConversionError(
                 "LOCAL_ONLY_MODE is enabled — MCP conversion is blocked."
             )
 
+        await audit_logger.emit(AuditEvent(
+            event_type="conversion",
+            status="started",
+            detail=f"MCPConverter started: {file_path}",
+        ))
+
         try:
+            file_bytes = await __import__("asyncio").to_thread(Path(file_path).read_bytes)
             async with httpx.AsyncClient(timeout=30) as client:
-                with open(file_path, "rb") as fh:
-                    resp = await client.post(
-                        self._endpoint,
-                        files={"file": (file_path, fh)},
-                    )
+                resp = await client.post(
+                    self._endpoint,
+                    files={"file": (file_path, file_bytes)},
+                )
                 resp.raise_for_status()
                 data = resp.json()
 
@@ -59,6 +67,12 @@ class MCPConverter:
         text = data.get("text", markdown)
 
         logger.info("mcp_converter_success", file=file_path, chars=len(markdown))
+
+        await audit_logger.emit(AuditEvent(
+            event_type="conversion",
+            status="completed",
+            detail=f"MCPConverter completed: {file_path} ({len(markdown)} chars)",
+        ))
 
         return ConversionResult(
             document_id=document_id,

@@ -19,6 +19,10 @@ from app.models.analysis import AnalysisRequest, AnalysisResult
 from app.models.document import DocumentChunk
 from app.models.financial import FinancialMetrics
 
+# Shared LLM failure fallback messages — consistent across all analyzers
+LLM_UNAVAILABLE_SUMMARY = "Analysis unavailable due to LLM error."
+LLM_UNAVAILABLE_NARRATIVE = "Narrative unavailable due to LLM error."
+
 
 @runtime_checkable
 class AbstractAnalyzer(Protocol):

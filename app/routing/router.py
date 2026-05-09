@@ -11,9 +11,13 @@ Usage::
 """
 from __future__ import annotations
 
+import asyncio
+
 import structlog
 
+from app.audit.logger import audit_logger
 from app.models.analysis import AnalysisType
+from app.models.audit import AuditEvent
 
 logger = structlog.get_logger(__name__)
 
@@ -100,7 +104,25 @@ def route(prompt: str) -> AnalysisType:
                 analysis_type=analysis_type,
                 prompt_prefix=normalised[:80],
             )
+            try:
+                loop = asyncio.get_running_loop()
+                loop.create_task(audit_logger.emit(AuditEvent(
+                    event_type="routing",
+                    status="matched",
+                    detail=f"Routed to {analysis_type}",
+                )))
+            except RuntimeError:
+                pass
             return analysis_type
 
     logger.debug("router_no_match", fallback=_DEFAULT_TYPE)
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(audit_logger.emit(AuditEvent(
+            event_type="routing",
+            status="fallback",
+            detail=f"No match; defaulted to {_DEFAULT_TYPE}",
+        )))
+    except RuntimeError:
+        pass
     return _DEFAULT_TYPE

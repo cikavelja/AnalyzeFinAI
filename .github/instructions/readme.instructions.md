@@ -14,7 +14,8 @@ Update `README.md` whenever any of the following change:
 | New `AnalysisType` supported | Pipeline Stages → Routing, Analysis |
 | New CLI command or flag | Usage → CLI |
 | New configuration key | Getting Started → Configuration |
-| New supported file format | End-User UI (Chainlit) supported formats list |
+| New supported file format | End-User UI section |
+| New API endpoint | Architecture table; Running the UI |
 | New LLM provider implementation | Key Design Principles → LLM Abstraction; Architecture table |
 | New storage backend | Architecture table; Configuration |
 | New converter backend | Architecture table; Configuration |

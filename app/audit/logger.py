@@ -44,7 +44,7 @@ class AuditLogger:
             async with self._lock:
                 self._path.parent.mkdir(parents=True, exist_ok=True)
                 line = event.model_dump_json() + "\n"
-                await asyncio.get_event_loop().run_in_executor(
+                await asyncio.get_running_loop().run_in_executor(
                     None, self._append_sync, line
                 )
             logger.debug(

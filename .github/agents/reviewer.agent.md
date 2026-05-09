@@ -30,10 +30,10 @@ You **cannot edit files** — you only read, analyze, and provide precise, actio
 
 ### 3. UI Compliance
 
-- `app/ui/chainlit_app.py` contains no business logic — only calls pipeline/agent functions.
-- Long operations wrapped in `cl.Step`.
-- LLM output is streamed via `stream_token()`.
-- Uploaded files validated against the extension whitelist before passing to ingestion.
+- React components in `ui/src/` contain no business logic — only calls to `api/client.ts`.
+- `api/client.ts` is the single fetch boundary — no direct `fetch` in components.
+- FastAPI routes in `app/api/` contain no business logic — only call existing analyzers/routing.
+- No Chainlit imports anywhere in the codebase.
 
 ### 4. Security (OWASP Top 10 focus)
 

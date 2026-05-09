@@ -1,85 +1,34 @@
 ---
-description: "Use when creating or editing UI code in app/ui/. Covers Chainlit async patterns, step display, streaming, file upload validation, DevUI launch script, and what must not appear in production UI."
-applyTo: "app/ui/**/*.py"
+description: "Use when creating or editing UI code in app/ui/ or ui/. Covers React/Vite/Tailwind patterns, FastAPI integration, DevUI launch script, and what must not appear in production UI."
+applyTo: "{app/ui/**/*.py,ui/src/**/*.{ts,tsx}}"
 ---
-# UI Conventions — Chainlit (Production) + DevUI (Development)
+# UI Conventions — React (Production) + DevUI (Development)
 
-## Chainlit — Production UI (`chainlit_app.py`)
+## React Frontend (`ui/src/`)
 
-### Decorator Pattern
+The production UI is a Vite + React 18 + TypeScript + Tailwind CSS application in `ui/`.
 
-```python
-import chainlit as cl
+### API Client (`ui/src/api/client.ts`)
 
-@cl.on_chat_start
-async def on_chat_start() -> None:
-    """Initialize session state and display welcome."""
-    ...
+All API calls go through the typed client — never call `fetch` directly in components:
 
-@cl.on_message
-async def on_message(message: cl.Message) -> None:
-    """Handle incoming chat messages and uploaded files."""
-    ...
+```typescript
+import { analyze } from '../api/client'
+const result = await analyze({ prompt })
 ```
 
-### Long Operations Must Use `cl.Step`
+### Component Conventions
 
-Never `await` a long operation directly in a message handler. Wrap it:
+- Use functional components with typed props interfaces.
+- Keep components under 150 lines — split by concern if larger.
+- Tailwind classes only — no inline styles, no CSS modules.
+- Async state: `isLoading`, `error`, `result` pattern in the page-level component (`App.tsx`).
 
-```python
-async with cl.Step(name="Converting documents") as step:
-    results = await convert_all_documents(documents)
-    step.output = f"Converted {len(results)} documents"
-```
+### What Must NOT Be in React Code
 
-Steps appear in the Chainlit UI as collapsible progress indicators with timing.
-
-### Streaming LLM Output
-
-Always stream — never buffer and return the full response at once:
-
-```python
-msg = cl.Message(content="")
-await msg.send()
-async for token in llm_provider.stream(...):
-    await msg.stream_token(token)
-await msg.update()
-```
-
-### File Upload Validation
-
-Before passing uploaded files to the ingestion layer, validate in the UI:
-
-```python
-ALLOWED_EXTENSIONS = {".pdf", ".docx", ".xlsx", ".csv", ".pptx", ".txt",
-                      ".html", ".json", ".xml", ".png", ".jpg", ".zip"}
-
-for element in message.elements:
-    if isinstance(element, cl.File):
-        ext = Path(element.name).suffix.lower()
-        if ext not in ALLOWED_EXTENSIONS:
-            await cl.Message(content=f"❌ Unsupported file type: {ext}").send()
-            return
-```
-
-### Report Download
-
-Send completed reports as file attachments:
-
-```python
-elements = [cl.File(name="report.md", path=str(report_path), display="inline")]
-await cl.Message(content="✅ Analysis complete. Report attached.", elements=elements).send()
-```
-
-### Audit Log Display
-
-Render audit events as collapsed steps, not raw JSON:
-
-```python
-for event in audit_events:
-    async with cl.Step(name=f"{event.event_type} — {event.status}") as s:
-        s.output = event.detail
-```
+- No business logic — only calls to `api/client.ts` functions.
+- No hardcoded API base URLs — use `import.meta.env.VITE_API_URL ?? ''` (proxied via Vite in dev).
+- No direct `fetch` outside `ui/src/api/client.ts`.
 
 ## DevUI — Development Launch Script (`devui_app.py`)
 
@@ -103,7 +52,7 @@ if __name__ == "__main__":
 
 ## What Must NOT Be in UI Code
 
-- No business logic — UI files only call pipeline/agent/workflow functions.
-- No direct LLM calls from UI files — always go through the agent or provider layer.
+- No business logic — UI files only call pipeline/agent/workflow or API functions.
+- No direct LLM calls from UI files — always go through the agent or API layer.
 - No raw document content in log messages.
-- No hardcoded API keys or model names — always read from `app/config.py`.
+- No hardcoded API keys or model names — always read from environment / `app/config.py`.

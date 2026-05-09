@@ -63,7 +63,11 @@ def analyze(
     typer.echo(f"🔍 Detected analysis type: {analysis_type}")
 
     async def _run() -> None:
-        from app.analyzers.summary import SummaryAnalyzer  # noqa: PLC0415
+        from app.analyzers.financial import FinancialAnalyzer  # noqa: PLC0415
+        from app.analyzers.universal import UniversalAnalyzer  # noqa: PLC0415
+        from app.financial.calculator import calculate_metrics  # noqa: PLC0415
+        from app.financial.extractor import extract_dataframe  # noqa: PLC0415
+        from app.ingestion.document_loader import load_chunks_from_path  # noqa: PLC0415
         from app.models.analysis import AnalysisRequest, AnalysisType  # noqa: PLC0415
         from app.reporting.writer import write_markdown_report  # noqa: PLC0415
 
@@ -72,18 +76,16 @@ def analyze(
             prompt=prompt,
         )
 
-        if analysis_type == AnalysisType.SUMMARY:
-            analyzer = SummaryAnalyzer()
-            result = await analyzer.analyze(request, chunks=[])
-        else:
-            from app.models.analysis import AnalysisResult  # noqa: PLC0415
+        chunks = await load_chunks_from_path(file_path) if file_path else []
 
-            result = AnalysisResult(
-                request_id=request.id,
-                analysis_type=analysis_type,
-                summary=f"Analyzer for '{analysis_type}' is a Phase 1 stub.",
-                warnings=["Full implementation coming in a later phase."],
-            )
+        if analysis_type == AnalysisType.FINANCIAL:
+            df = extract_dataframe(chunks)
+            metrics = calculate_metrics(df) if not df.empty else None
+            analyzer_fin = FinancialAnalyzer()
+            result = await analyzer_fin.analyze(request, chunks=chunks, metrics=metrics)
+        else:
+            analyzer = UniversalAnalyzer()
+            result = await analyzer.analyze(request, chunks=chunks)
 
         report_path = write_markdown_report(result, output)
         typer.echo(f"✅ Report written to: {report_path}")

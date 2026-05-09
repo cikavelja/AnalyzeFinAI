@@ -1,4 +1,4 @@
-.PHONY: install install-dev run-devui run-cli test lint fmt help
+.PHONY: install install-dev run-api run-react run-devui run-cli test lint fmt help
 
 # ── Variables ──────────────────────────────────────────────────────────────
 PYTHON   := python
@@ -18,6 +18,14 @@ install-dev:
 	$(PIP) install -e ".[dev]" --pre
 
 # ── Run ────────────────────────────────────────────────────────────────────
+
+## run-api: Start the FastAPI server (development, auto-reload)
+run-api:
+	uvicorn app.api.main:app --reload --port 8000
+
+## run-react: Start the React Vite dev server
+run-react:
+	cd ui && npm run dev
 
 ## run-devui: Launch the MAF DevUI (development only — never use in production)
 run-devui:

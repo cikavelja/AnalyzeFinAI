@@ -11,21 +11,12 @@ import json
 
 import structlog
 from agent_framework import Agent
-from agent_framework.openai import OpenAIChatClient
 
+from app.agents._client import make_agent_client
 from app.config import settings
+from app.exceptions import AnalysisError
 
-logger = structlog.get_logger(__name__)
-
-
-def _make_client() -> OpenAIChatClient:
-    kwargs: dict = {"model": settings.openai_model}
-    if settings.openai_api_key:
-        kwargs["api_key"] = settings.openai_api_key
-    return OpenAIChatClient(**kwargs)
-
-
-# ---------------------------------------------------------------------------
+logger = structlog.get_logger(__name__)# ---------------------------------------------------------------------------
 # Tool functions
 # ---------------------------------------------------------------------------
 
@@ -111,9 +102,11 @@ _orchestrator_agent: Agent | None = None
 
 
 def _build_orchestrator_agent() -> Agent:
+    if settings.local_only_mode:
+        raise AnalysisError("LOCAL_ONLY_MODE is enabled — agent LLM calls are blocked.")
     return Agent(
         name="OrchestratorAgent",
-        client=_make_client(),
+        client=make_agent_client(),
         instructions=(
             "You are the OrchestratorAgent for AnalizerAI. "
             "Your job is to understand the user's analysis request, determine the right "

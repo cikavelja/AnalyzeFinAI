@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import structlog
 
+from app.analyzers.base import LLM_UNAVAILABLE_NARRATIVE, LLM_UNAVAILABLE_SUMMARY
 from app.audit.logger import audit_logger
 from app.llm.prompt_templates import get_system_prompt, get_user_prompt
 from app.llm.provider import AbstractLLMProvider, OpenAIProvider
@@ -60,7 +61,7 @@ class FinancialAnalyzer:
         except Exception as exc:
             logger.error("financial_analyzer_error", error=str(exc))
             warnings.append(f"LLM call failed: {exc}")
-            narrative = "Financial narrative unavailable."
+            narrative = LLM_UNAVAILABLE_NARRATIVE
 
         metric_dict: dict[str, float] = {}
         if metrics:
@@ -71,7 +72,7 @@ class FinancialAnalyzer:
         result = AnalysisResult(
             request_id=request.id,
             analysis_type=AnalysisType.FINANCIAL,
-            summary=narrative[:500] if narrative else "",
+            summary=narrative[:500] if narrative and narrative != LLM_UNAVAILABLE_NARRATIVE else LLM_UNAVAILABLE_SUMMARY,
             narrative=narrative,
             metrics=metric_dict,
             warnings=warnings,

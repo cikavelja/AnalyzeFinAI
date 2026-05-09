@@ -36,5 +36,5 @@ class DocumentChunk(BaseModel):
     text: str
     page_number: int | None = None
     section_title: str | None = None
-    token_count: int | None = None
+    word_count: int | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

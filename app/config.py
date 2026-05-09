@@ -24,7 +24,11 @@ class Settings(BaseSettings):
     openai_model: str = Field(default="gpt-4o", alias="OPENAI_MODEL")
 
     # ── Conversion ─────────────────────────────────────────────────────────
-    conversion_mode: str = Field(default="local", alias="CONVERSION_MODE")
+    # Supported values: "local" | "markitdown" | "mcp"
+    conversion_mode: str = Field(default="markitdown", alias="CONVERSION_MODE")
+    mcp_endpoint: str = Field(
+        default="http://localhost:3001/convert", alias="MCP_ENDPOINT"
+    )
 
     # ── Logging ────────────────────────────────────────────────────────────
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")

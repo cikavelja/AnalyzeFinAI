@@ -1,0 +1,15 @@
+{
+  "id": "0efaa366-77fc-4e72-bf3d-817abe10fc10",
+  "request_id": "9483ead0-3cd9-4da2-92ca-805a9ab956d5",
+  "analysis_type": "financial",
+  "summary": "Analysis unavailable due to LLM error.",
+  "narrative": "Narrative unavailable due to LLM error.",
+  "key_findings": [],
+  "recommendations": [],
+  "warnings": [
+    "LLM call failed: OpenAI API error: Client error '401 Unauthorized' for url 'https://api.openai.com/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401"
+  ],
+  "metrics": {},
+  "model_used": "gpt-4o",
+  "completed_at": "2026-05-09T21:29:00.529508Z"
+}

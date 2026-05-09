@@ -29,9 +29,6 @@ def validate_result(result: AnalysisResult) -> list[str]:
     ValidationError
         If *result* is None.
     """
-    if result is None:
-        raise ValidationError("AnalysisResult must not be None.")
-
     issues: list[str] = []
 
     if not result.summary:

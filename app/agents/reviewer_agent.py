@@ -9,21 +9,12 @@ import json
 
 import structlog
 from agent_framework import Agent
-from agent_framework.openai import OpenAIChatClient
 
+from app.agents._client import make_agent_client
 from app.config import settings
+from app.exceptions import AnalysisError
 
-logger = structlog.get_logger(__name__)
-
-
-def _make_client() -> OpenAIChatClient:
-    kwargs: dict = {"model": settings.openai_model}
-    if settings.openai_api_key:
-        kwargs["api_key"] = settings.openai_api_key
-    return OpenAIChatClient(**kwargs)
-
-
-# ---------------------------------------------------------------------------
+logger = structlog.get_logger(__name__)# ---------------------------------------------------------------------------
 # Validation constants
 # ---------------------------------------------------------------------------
 
@@ -108,9 +99,11 @@ _reviewer_agent: Agent | None = None
 
 
 def _build_reviewer_agent() -> Agent:
+    if settings.local_only_mode:
+        raise AnalysisError("LOCAL_ONLY_MODE is enabled — agent LLM calls are blocked.")
     return Agent(
         name="ReviewerAgent",
-        client=_make_client(),
+        client=make_agent_client(),
         instructions=(
             "You are the ReviewerAgent for AnalizerAI. "
             "Your role is to quality-check analysis results before they are delivered to users. "

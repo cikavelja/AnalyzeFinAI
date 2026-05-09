@@ -3,6 +3,7 @@
 This is the default converter used when CONVERSION_MODE=local.
 Supported file types: .txt, .md, .csv, .json, .xml, .html (raw text pass-through).
 For other types, the raw bytes are decoded with errors='replace'.
+ZIP files are explicitly rejected — use CONVERSION_MODE=markitdown for ZIP support.
 """
 from __future__ import annotations
 
@@ -11,8 +12,10 @@ from uuid import UUID
 
 import structlog
 
+from app.audit.logger import audit_logger
 from app.conversion.base import ConversionResult
 from app.exceptions import ConversionError
+from app.models.audit import AuditEvent
 
 logger = structlog.get_logger(__name__)
 
@@ -27,8 +30,14 @@ class LocalConverter:
         """Convert the file at *file_path* to a ConversionResult.
 
         Raises:
-            ConversionError: if the file does not exist or cannot be read.
+            ConversionError: if the file does not exist, cannot be read, or is a ZIP.
         """
+        await audit_logger.emit(AuditEvent(
+            event_type="conversion",
+            status="started",
+            detail=f"LocalConverter started: {file_path}",
+        ))
+
         path = Path(file_path)
         if not path.exists():
             raise ConversionError(f"File not found: {file_path}")
@@ -37,6 +46,12 @@ class LocalConverter:
 
         warnings: list[str] = []
         ext = path.suffix.lower()
+
+        if ext == ".zip":
+            raise ConversionError(
+                "ZIP files are not supported in local conversion mode. "
+                "Set CONVERSION_MODE=markitdown to enable ZIP support."
+            )
 
         try:
             if ext in _TEXT_EXTENSIONS:
@@ -53,6 +68,12 @@ class LocalConverter:
             raise ConversionError(f"Cannot read file '{file_path}': {exc}") from exc
 
         logger.info("local_converter_success", file=file_path, chars=len(text))
+
+        await audit_logger.emit(AuditEvent(
+            event_type="conversion",
+            status="completed",
+            detail=f"LocalConverter completed: {file_path} ({len(text)} chars)",
+        ))
 
         return ConversionResult(
             document_id=document_id,

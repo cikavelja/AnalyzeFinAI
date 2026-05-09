@@ -1,3 +1,13 @@
+### Stage 1 — Build React UI
+FROM node:20-slim AS ui-builder
+
+WORKDIR /ui
+COPY ui/package.json ui/package-lock.json* ./
+RUN npm ci --ignore-scripts
+COPY ui/ .
+RUN npm run build
+
+### Stage 2 — Python runtime
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -16,15 +26,18 @@ RUN pip install --no-cache-dir -e .
 # Copy application source
 COPY app/ ./app/
 
-# Create data directory for audit log
-RUN mkdir -p data/converted
+# Copy built React assets from Stage 1
+COPY --from=ui-builder /ui/dist ./ui/dist
 
 # Non-root user for security
 RUN useradd --system --uid 1001 analizer
+
+# Create data directories and assign ownership before switching to non-root
+RUN mkdir -p data/uploads data/converted && chown -R analizer:analizer data/
+
 USER analizer
 
-# Production entrypoint: Chainlit UI
-# DevUI (devui_app.py) is NEVER used here
-CMD ["chainlit", "run", "app/ui/chainlit_app.py", "--port", "8000", "--host", "0.0.0.0"]
+# Production entrypoint: FastAPI via uvicorn (serves React static files too)
+CMD ["uvicorn", "app.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 EXPOSE 8000

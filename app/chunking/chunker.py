@@ -5,6 +5,7 @@ Uses a simple character-based sliding window. Token-aware chunking
 """
 from __future__ import annotations
 
+import asyncio
 from uuid import UUID
 
 import structlog
@@ -41,7 +42,30 @@ def chunk_text(
     -------
     list[DocumentChunk]
         Ordered list of chunks. Returns a single empty chunk if *text* is blank.
+
+    Raises
+    ------
+    ValueError
+        If *overlap* is greater than or equal to *chunk_size*.
     """
+    if overlap >= chunk_size:
+        raise ValueError(f"overlap ({overlap}) must be less than chunk_size ({chunk_size})")
+
+    # Emit audit start event if an event loop is running
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+
+    if loop is not None:
+        from app.audit.logger import audit_logger  # noqa: PLC0415
+        from app.models.audit import AuditEvent  # noqa: PLC0415
+        loop.create_task(audit_logger.emit(AuditEvent(
+            event_type="chunking",
+            status="started",
+            detail=f"chunk_text started for document {document_id}",
+        )))
+
     if not text or not text.strip():
         logger.warning("chunker_empty_text", document_id=str(document_id))
         return [
@@ -65,7 +89,7 @@ def chunk_text(
                 document_id=document_id,
                 index=index,
                 text=chunk_text_slice,
-                token_count=len(chunk_text_slice.split()),  # rough word count
+                word_count=len(chunk_text_slice.split()),
             )
         )
 
@@ -76,4 +100,14 @@ def chunk_text(
         index += 1
 
     logger.debug("chunker_done", document_id=str(document_id), chunks=len(chunks))
+
+    if loop is not None:
+        from app.audit.logger import audit_logger  # noqa: PLC0415
+        from app.models.audit import AuditEvent  # noqa: PLC0415
+        loop.create_task(audit_logger.emit(AuditEvent(
+            event_type="chunking",
+            status="completed",
+            detail=f"chunk_text completed: {len(chunks)} chunks for document {document_id}",
+        )))
+
     return chunks

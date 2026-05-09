@@ -10,6 +10,13 @@ from uuid import UUID, uuid4
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class AnomalyRecord(BaseModel):
+    """A single revenue anomaly detected by z-score analysis."""
+
+    period: str
+    value: float
+
+
 class FinancialMetrics(BaseModel):
     """Typed output returned by app/financial/calculator.py."""
 
@@ -36,8 +43,8 @@ class FinancialMetrics(BaseModel):
     current_liabilities: float | None = None
     current_ratio: float | None = None
 
-    # Anomalies — list of (period_label, value) tuples serialised as dicts
-    anomalies: list[dict[str, float | str]] = Field(default_factory=list)
+    # Anomalies — list of typed records
+    anomalies: list[AnomalyRecord] = Field(default_factory=list)
 
     # Audit trail
     warnings: list[str] = Field(default_factory=list)

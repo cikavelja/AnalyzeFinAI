@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from typing import AsyncIterator, Protocol, runtime_checkable
 
+import json
+
 import httpx
 import structlog
 
@@ -119,7 +121,6 @@ class OpenAIProvider:
                         payload = line[6:]
                         if payload.strip() == "[DONE]":
                             break
-                        import json
                         chunk = json.loads(payload)
                         delta = chunk["choices"][0]["delta"].get("content", "")
                         if delta:

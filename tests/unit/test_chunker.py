@@ -74,10 +74,10 @@ def test_chunker_overlap_creates_context_continuity(doc_id) -> None:
         assert chunks[1].text[:200] == chunks[0].text[-200:]
 
 
-def test_chunker_token_count_populated(doc_id, short_text: str) -> None:
+def test_chunker_word_count_populated(doc_id, short_text: str) -> None:
     chunks = chunk_text(short_text, doc_id)
-    assert chunks[0].token_count is not None
-    assert chunks[0].token_count >= 0
+    assert chunks[0].word_count is not None
+    assert chunks[0].word_count >= 0
 
 
 # ---------------------------------------------------------------------------

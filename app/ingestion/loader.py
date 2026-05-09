@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from uuid import UUID
 
 import structlog
 
@@ -14,13 +15,15 @@ from app.models.document import DocumentMetadata
 logger = structlog.get_logger(__name__)
 
 
-async def load_document(file_path: str) -> DocumentMetadata:
+async def load_document(file_path: str, request_id: UUID | None = None) -> DocumentMetadata:
     """Validate, detect type, and create a DocumentMetadata record.
 
     Parameters
     ----------
     file_path:
         Absolute path to the file to ingest.
+    request_id:
+        Optional UUID to correlate ingestion events with an analysis request.
 
     Returns
     -------
@@ -35,6 +38,7 @@ async def load_document(file_path: str) -> DocumentMetadata:
     await audit_logger.emit(
         AuditEvent(
             event_type="ingestion",
+            request_id=request_id,
             status="started",
             detail=f"Loading file: {file_path}",
         )
@@ -44,9 +48,10 @@ async def load_document(file_path: str) -> DocumentMetadata:
     ext, mime_type = detect_file_type(file_path)
 
     path = Path(file_path)
+    stat = path.stat()
     metadata = DocumentMetadata(
         file_name=path.name,
-        file_size=path.stat().st_size,
+        file_size=stat.st_size,
         extension=ext,
         mime_type=mime_type,
         source_path=str(path.resolve()),
@@ -55,8 +60,9 @@ async def load_document(file_path: str) -> DocumentMetadata:
     await audit_logger.emit(
         AuditEvent(
             event_type="ingestion",
+            request_id=request_id,
             status="completed",
-            detail=f"Ingested '{path.name}' ({path.stat().st_size:,} bytes)",
+            detail=f"Ingested '{path.name}' ({stat.st_size:,} bytes)",
         )
     )
 

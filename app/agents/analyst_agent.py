@@ -10,22 +10,12 @@ import json
 
 import structlog
 from agent_framework import Agent
-from agent_framework.openai import OpenAIChatClient
 
+from app.agents._client import make_agent_client
 from app.config import settings
+from app.exceptions import AnalysisError
 
-logger = structlog.get_logger(__name__)
-
-
-def _make_client() -> OpenAIChatClient:
-    """Build OpenAIChatClient, omitting api_key when unset so the SDK reads OPENAI_API_KEY from env."""
-    kwargs: dict = {"model": settings.openai_model}
-    if settings.openai_api_key:
-        kwargs["api_key"] = settings.openai_api_key
-    return OpenAIChatClient(**kwargs)
-
-
-# ---------------------------------------------------------------------------
+logger = structlog.get_logger(__name__)# ---------------------------------------------------------------------------
 # Tool functions
 # ---------------------------------------------------------------------------
 
@@ -43,26 +33,26 @@ async def run_financial_calculation(document_id: str, calculation_type: str) -> 
     Returns a JSON string of FinancialMetrics.
     """
     try:
-        import pandas as pd  # noqa: PLC0415
+        from uuid import UUID  # noqa: PLC0415
 
         from app.financial.calculator import calculate_metrics  # noqa: PLC0415
+        from app.financial.extractor import extract_dataframe  # noqa: PLC0415
+        from app.ingestion.document_loader import load_chunks  # noqa: PLC0415
 
-        # In a full implementation this would load the document's extracted DataFrame.
-        # For Phase 1 we return a stub indicating the document_id was received.
         logger.info(
             "analyst_financial_calc",
             document_id=document_id,
             calculation_type=calculation_type,
         )
 
-        # Stub: create a minimal DataFrame to exercise the calculator
-        stub_df = pd.DataFrame(
-            {
-                "revenue": [100_000.0, 110_000.0, 121_000.0],
-                "cogs": [60_000.0, 65_000.0, 70_000.0],
-            }
-        )
-        metrics = calculate_metrics(stub_df)
+        chunks = await load_chunks([UUID(document_id)])
+        df = extract_dataframe(chunks)
+        if df.empty:
+            return json.dumps({
+                "warning": "No financial data could be extracted from the document.",
+                "document_id": document_id,
+            })
+        metrics = calculate_metrics(df)
         return metrics.model_dump_json()
 
     except Exception as exc:
@@ -86,10 +76,9 @@ async def analyze_document(document_id: str, analysis_type: str) -> str:
     try:
         from uuid import UUID  # noqa: PLC0415
 
-        from app.analyzers.summary import SummaryAnalyzer  # noqa: PLC0415
+        from app.ingestion.document_loader import load_chunks  # noqa: PLC0415
         from app.models.analysis import AnalysisRequest, AnalysisType  # noqa: PLC0415
 
-        # Resolve analysis type
         try:
             atype = AnalysisType(analysis_type.lower())
         except ValueError:
@@ -101,19 +90,20 @@ async def analyze_document(document_id: str, analysis_type: str) -> str:
             document_ids=[UUID(document_id)],
         )
 
-        # For Phase 1, only SummaryAnalyzer is fully implemented
-        if atype == AnalysisType.SUMMARY:
-            analyzer = SummaryAnalyzer()
-            result = await analyzer.analyze(request, chunks=[])
-        else:
-            from app.models.analysis import AnalysisResult  # noqa: PLC0415
+        chunks = await load_chunks([UUID(document_id)])
 
-            result = AnalysisResult(
-                request_id=request.id,
-                analysis_type=atype,
-                summary=f"Analyzer for '{analysis_type}' not yet implemented.",
-                warnings=[f"'{analysis_type}' analyzer is a stub in Phase 1."],
-            )
+        if atype == AnalysisType.FINANCIAL:
+            from app.analyzers.financial import FinancialAnalyzer  # noqa: PLC0415
+            from app.financial.calculator import calculate_metrics  # noqa: PLC0415
+            from app.financial.extractor import extract_dataframe  # noqa: PLC0415
+
+            df = extract_dataframe(chunks)
+            metrics = calculate_metrics(df) if not df.empty else None
+            result = await FinancialAnalyzer().analyze(request, chunks=chunks, metrics=metrics)
+        else:
+            from app.analyzers.universal import UniversalAnalyzer  # noqa: PLC0415
+
+            result = await UniversalAnalyzer().analyze(request, chunks=chunks)
 
         return result.model_dump_json()
 
@@ -130,9 +120,11 @@ _analyst_agent: Agent | None = None
 
 
 def _build_analyst_agent() -> Agent:
+    if settings.local_only_mode:
+        raise AnalysisError("LOCAL_ONLY_MODE is enabled — agent LLM calls are blocked.")
     return Agent(
         name="AnalystAgent",
-        client=_make_client(),
+        client=make_agent_client(),
         instructions=(
             "You are the AnalystAgent for AnalizerAI. "
             "You specialise in document analysis and financial calculations. "

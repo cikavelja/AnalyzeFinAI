@@ -19,7 +19,7 @@ For each template area, look for answers in the scan output first, then read sou
 ## 2. STRUCTURE.md — Directory Layout
 
 - Where does source code live?
-- What are the entry points? (check `app/main.py`, `app/ui/chainlit_app.py`, `app/ui/devui_app.py`)
+- What are the entry points? (check `app/main.py`, `app/api/main.py`, `app/ui/devui_app.py`, `ui/src/main.tsx`)
 - What is the stated purpose of each top-level directory?
 - Are there non-obvious directories?
 - What naming conventions do directories follow?
