@@ -15,6 +15,7 @@ attribute and render the workflow diagram.
 from __future__ import annotations
 
 import json
+import re
 from typing import Never
 
 import structlog
@@ -80,6 +81,45 @@ async def ingest_step(context, ctx: WorkflowContext[dict]) -> None:
     await ctx.send_message(context)
 
 
+def _strip_metadata_preamble(text: str) -> str:
+    """Remove markitdown metadata preamble from converted text.
+
+    Handles three common forms:
+    1. HTML comment block: <!-- ... -->
+    2. YAML front-matter:  ---\\n...\\n---
+    3. Leading Key: Value lines before the first blank line or heading
+
+    The actual document content is returned unchanged.
+    """
+    # 1. Strip leading HTML comment block (markitdown metadata comments)
+    text = re.sub(r"^\s*<!--.*?-->\s*", "", text, flags=re.DOTALL)
+
+    # 2. Strip YAML front-matter block (---\n...\n---)
+    text = re.sub(r"^\s*---\s*\n.*?\n---\s*\n", "", text, flags=re.DOTALL)
+
+    # 3. Strip a leading block of "Key: value" lines (document properties preamble).
+    # Stop as soon as we hit a blank line followed by non-property content, or a heading.
+    lines = text.splitlines(keepends=True)
+    key_value = re.compile(r"^[A-Za-z][A-Za-z0-9 _-]{0,40}:\s*.+")
+    i = 0
+    while i < len(lines):
+        stripped = lines[i].strip()
+        if not stripped:
+            i += 1
+            continue
+        if key_value.match(stripped):
+            i += 1
+            continue
+        break  # first non-blank, non-key-value line — real content starts here
+
+    # Only drop the preamble when it's meaningful (>=2 metadata lines)
+    metadata_lines = sum(1 for ln in lines[:i] if ln.strip() and key_value.match(ln.strip()))
+    if metadata_lines >= 2:
+        text = "".join(lines[i:])
+
+    return text.strip()
+
+
 @executor
 async def convert_step(context: dict, ctx: WorkflowContext[dict]) -> None:
     """Step 2 — Convert: convert each document to text using the configured converter."""
@@ -101,6 +141,9 @@ async def convert_step(context: dict, ctx: WorkflowContext[dict]) -> None:
     converter = get_converter()
     context["converter_used"] = type(converter).__name__
 
+    converted_dir = Path("data/converted")
+    converted_dir.mkdir(parents=True, exist_ok=True)
+
     upload_dir = Path("data/uploads")
     all_chunks: list[dict] = []
     for doc_id_str in context.get("document_ids", []):
@@ -111,7 +154,17 @@ async def convert_step(context: dict, ctx: WorkflowContext[dict]) -> None:
             continue
         try:
             result = await converter.convert(str(matches[0]), doc_id)
-            chunks = chunk_text(result.text_content, doc_id)
+            markdown = result.markdown_content or result.text_content
+
+            # Persist raw markdown output for inspection before any further processing
+            md_path = converted_dir / f"{doc_id}.md"
+            md_path.write_text(markdown, encoding="utf-8")
+            logger.info("workflow_convert_markdown_saved", path=str(md_path), chars=len(markdown))
+
+            # Strip metadata preamble that markitdown prepends before chunking
+            text = _strip_metadata_preamble(markdown)
+
+            chunks = chunk_text(text, doc_id)
             all_chunks.extend(c.model_dump(mode="json") for c in chunks)
         except Exception as exc:
             logger.error("workflow_convert_failed", document_id=str(doc_id), error=str(exc))
@@ -233,14 +286,15 @@ async def report_step(context: dict, ctx: WorkflowContext[Never, str]) -> None:
     report = context["final_report"]
     result = report.get("result") or {}
     review = report.get("review") or {}
+    narrative = result.get("narrative") or result.get("summary") or "No analysis available."
     lines = [
         "## Analysis Complete",
         f"**Type:** {report.get('analysis_type', 'N/A')}",
         f"**Converter:** {report.get('converter_used', 'N/A')}",
         f"**Ingested at:** {report.get('ingested_at', 'N/A')}",
         "",
-        "### Summary",
-        result.get("summary", "No summary available."),
+        "### Analysis",
+        narrative,
     ]
     if result.get("warnings"):
         lines += ["", "### Warnings"] + [f"- {w}" for w in result["warnings"]]

@@ -51,6 +51,11 @@ class FinancialAnalyzer:
 
             if not chunks:
                 warnings.append("No document chunks provided.")
+            if metrics is None:
+                warnings.append(
+                    "Metric extraction yielded no structured data — "
+                    "LLM will analyse raw document text instead."
+                )
 
             system = get_system_prompt(AnalysisType.FINANCIAL)
             user = get_user_prompt(
@@ -72,7 +77,7 @@ class FinancialAnalyzer:
         result = AnalysisResult(
             request_id=request.id,
             analysis_type=AnalysisType.FINANCIAL,
-            summary=narrative[:500] if narrative and narrative != LLM_UNAVAILABLE_NARRATIVE else LLM_UNAVAILABLE_SUMMARY,
+            summary=narrative if narrative and narrative != LLM_UNAVAILABLE_NARRATIVE else LLM_UNAVAILABLE_SUMMARY,
             narrative=narrative,
             metrics=metric_dict,
             warnings=warnings,

@@ -59,7 +59,7 @@ class UniversalAnalyzer:
                 system = get_system_prompt(request.analysis_type)
                 user = get_user_prompt(request.analysis_type, context=context)
                 narrative = await self.llm_provider.complete(system, user)
-                summary = narrative[:500] if len(narrative) > 500 else narrative
+                summary = narrative
 
         except Exception as exc:
             logger.error(

@@ -1,0 +1,15 @@
+{
+  "id": "f97cb6d0-2605-4f6b-8e3f-123b3bcb9b91",
+  "request_id": "358db130-7bcd-4ad9-8a28-86fab89084a3",
+  "analysis_type": "financial",
+  "summary": "The provided text does not contain any explicit financial data or metrics to analyze. It appears to contain metadata and internal structure of a document rather than quantitative financial information. Thus, I am unable to perform any financial analysis based on the given content. If you have a document with specific financial figures or data, please provide that text for analysis.",
+  "narrative": "The provided text does not contain any explicit financial data or metrics to analyze. It appears to contain metadata and internal structure of a document rather than quantitative financial information. Thus, I am unable to perform any financial analysis based on the given content. If you have a document with specific financial figures or data, please provide that text for analysis.",
+  "key_findings": [],
+  "recommendations": [],
+  "warnings": [
+    "Metric extraction yielded no structured data — LLM will analyse raw document text instead."
+  ],
+  "metrics": {},
+  "model_used": "gpt-4o",
+  "completed_at": "2026-05-09T21:46:46.408488Z"
+}

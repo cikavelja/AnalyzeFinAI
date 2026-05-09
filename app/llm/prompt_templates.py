@@ -100,5 +100,14 @@ def get_user_prompt(analysis_type: AnalysisType, context: str, metrics: str = ""
     metrics:
         Optional pre-computed metrics JSON (used for FINANCIAL type).
     """
+    if analysis_type == AnalysisType.FINANCIAL and metrics.strip() in ("", "{}"):
+        # Metric extraction yielded nothing — instruct the LLM to work from the raw text.
+        return (
+            "Note: Automated metric extraction did not produce any pre-computed figures.\n\n"
+            "Document content:\n{context}\n\n"
+            "Analyse the financial data visible in the document text above. "
+            "Cite figures exactly as they appear — do not invent or recalculate numbers."
+        ).format(context=context)
+
     template = _USER_PROMPT_TEMPLATES.get(analysis_type, "{context}")
     return template.format(context=context, metrics=metrics)
