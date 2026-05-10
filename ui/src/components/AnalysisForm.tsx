@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from 'react'
 import { uploadDocument } from '../api/client'
 import { FileUpload, type UploadedFile } from './FileUpload'
+import { ModelSelector, type ModelSelection } from './ModelSelector'
 
 interface Props {
-  onSubmit: (prompt: string, documentIds: string[]) => void
+  onSubmit: (prompt: string, documentIds: string[], provider: 'openai' | 'local', modelId: string) => void
   isLoading: boolean
 }
 
@@ -12,6 +13,10 @@ export function AnalysisForm({ onSubmit, isLoading }: Props) {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
+  const [modelSelection, setModelSelection] = useState<ModelSelection>({
+    provider: 'openai',
+    modelId: '',
+  })
 
   async function handleUpload(files: FileList) {
     setUploadError(null)
@@ -38,13 +43,26 @@ export function AnalysisForm({ onSubmit, isLoading }: Props) {
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
     const trimmed = prompt.trim()
-    if (trimmed) onSubmit(trimmed, uploadedFiles.map((f) => f.id))
+    if (trimmed) {
+      onSubmit(
+        trimmed,
+        uploadedFiles.map((f) => f.id),
+        modelSelection.provider,
+        modelSelection.modelId,
+      )
+    }
   }
 
   const busy = isLoading || isUploading
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      <ModelSelector
+        selection={modelSelection}
+        onChange={setModelSelection}
+        disabled={busy}
+      />
+
       <FileUpload
         uploadedFiles={uploadedFiles}
         onUpload={handleUpload}

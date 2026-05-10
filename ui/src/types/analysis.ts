@@ -1,6 +1,8 @@
 export interface AnalyzeRequest {
   prompt: string
   document_ids?: string[]
+  provider?: 'openai' | 'local'
+  model_id?: string
 }
 
 export interface AnalyzeResponse {

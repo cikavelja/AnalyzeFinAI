@@ -21,7 +21,7 @@ install-dev:
 
 ## run-api: Start the FastAPI server (development, auto-reload)
 run-api:
-	uvicorn app.api.main:app --reload --port 8000
+	uvicorn app.api.main:app --reload --reload-dir app --port 8000
 
 ## run-react: Start the React Vite dev server
 run-react:

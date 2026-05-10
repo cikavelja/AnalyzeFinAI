@@ -19,6 +19,8 @@ build/
 data/audit.jsonl
 data/uploads/
 data/converted/
+data/models/
+data/results/
 reports/
 
 # UI

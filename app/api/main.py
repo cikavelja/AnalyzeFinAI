@@ -17,6 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from app.api.routes.analysis import router as analysis_router
 from app.api.routes.documents import router as documents_router
 from app.api.routes.health import router as health_router
+from app.api.routes.models import router as models_router
 
 logger = structlog.get_logger(__name__)
 
@@ -42,7 +43,7 @@ app.add_middleware(
         "http://localhost:8000",  # same-origin in production
     ],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
 )
 
@@ -53,6 +54,7 @@ app.add_middleware(
 app.include_router(health_router)
 app.include_router(analysis_router)
 app.include_router(documents_router)
+app.include_router(models_router)
 
 # ---------------------------------------------------------------------------
 # Serve React static build in production (ui/dist must exist)

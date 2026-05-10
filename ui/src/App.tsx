@@ -11,13 +11,18 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
-  async function handleSubmit(prompt: string, documentIds: string[]) {
+  async function handleSubmit(prompt: string, documentIds: string[], provider: 'openai' | 'local', modelId: string) {
     setIsLoading(true)
     setError(null)
     setResult(null)
 
     try {
-      const data = await analyze({ prompt, document_ids: documentIds.length ? documentIds : undefined })
+      const data = await analyze({
+        prompt,
+        document_ids: documentIds.length ? documentIds : undefined,
+        provider,
+        model_id: modelId || undefined,
+      })
       setResult(data)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unexpected error')

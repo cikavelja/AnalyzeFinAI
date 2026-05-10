@@ -12,6 +12,8 @@ class AnalyzeRequest(BaseModel):
     prompt: str = Field(..., min_length=1, description="User prompt describing the analysis needed")
     document_ids: list[UUID] = Field(default_factory=list, description="Optional document UUIDs")
     analysis_type: str | None = Field(default=None, description="Optional analysis type override (e.g. 'financial')")
+    provider: str | None = Field(default=None, description="LLM provider: 'openai' or 'local'")
+    model_id: str | None = Field(default=None, description="Model ID override (OpenAI model name or HuggingFace repo ID)")
 
 
 class AnalyzeResponse(BaseModel):

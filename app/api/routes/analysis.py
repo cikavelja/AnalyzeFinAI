@@ -15,6 +15,7 @@ from app.api.schemas.analysis import AnalyzeRequest, AnalyzeResponse
 from app.financial.calculator import calculate_metrics
 from app.financial.extractor import extract_dataframe
 from app.ingestion.document_loader import load_chunks
+from app.llm.factory import get_llm_provider
 from app.models.analysis import AnalysisRequest, AnalysisResult, AnalysisType
 from app.routing.router import route
 from app.storage.filesystem import FilesystemStorage
@@ -50,13 +51,15 @@ async def analyze(body: AnalyzeRequest) -> AnalyzeResponse:
 
         chunks = await load_chunks(body.document_ids)
 
+        llm_provider = get_llm_provider(provider=body.provider, model_id=body.model_id)
+
         if analysis_type == AnalysisType.FINANCIAL:
             df = extract_dataframe(chunks)
             metrics = calculate_metrics(df) if not df.empty else None
-            analyzer_fin = FinancialAnalyzer()
+            analyzer_fin = FinancialAnalyzer(llm_provider=llm_provider)
             result: AnalysisResult = await analyzer_fin.analyze(request, chunks=chunks, metrics=metrics)
         else:
-            analyzer = UniversalAnalyzer()
+            analyzer = UniversalAnalyzer(llm_provider=llm_provider)
             result = await analyzer.analyze(request, chunks=chunks)
 
         # MED-11: persist result for later retrieval

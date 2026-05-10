@@ -23,6 +23,15 @@ class Settings(BaseSettings):
     openai_api_key: str = Field(default="", alias="OPENAI_API_KEY")
     openai_model: str = Field(default="gpt-4o", alias="OPENAI_MODEL")
 
+    # ── Local / HuggingFace LLM ────────────────────────────────────────────
+    # "openai" uses the OpenAI API; "local" uses a HuggingFace model on-device
+    llm_provider: str = Field(default="openai", alias="LLM_PROVIDER")
+    local_model_id: str = Field(
+        default="microsoft/Phi-3.5-mini-instruct", alias="LOCAL_MODEL_ID"
+    )
+    hf_token: str = Field(default="", alias="HF_TOKEN")
+    hf_cache_dir: str = Field(default="data/models", alias="HF_CACHE_DIR")
+
     # ── Conversion ─────────────────────────────────────────────────────────
     # Supported values: "local" | "markitdown" | "mcp"
     conversion_mode: str = Field(default="markitdown", alias="CONVERSION_MODE")
