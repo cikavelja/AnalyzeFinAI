@@ -17,7 +17,7 @@
 - [Testing](#testing)
 - [Docker](#docker)
 - [Project Structure](#project-structure)
-- [Known Limitations (Phase 1)](#known-limitations-phase-1)
+- [Known Limitations](#known-limitations)
 
 ---
 
@@ -28,6 +28,9 @@ AnalizerAI analyses financial, legal, audit, and general documents using:
 - **MAF Agents** (`OrchestratorAgent`, `AnalystAgent`, `ReviewerAgent`) for orchestrated,
   multi-step reasoning.
 - **Deterministic financial engine** (`app/financial/calculator.py`) — no LLM arithmetic.
+- **`UniversalAnalyzer`** for SUMMARY, COMPARISON, LEGAL, AUDIT, and CUSTOM analysis types
+  (prompt-template-driven LLM narrative).
+- **`FinancialAnalyzer`** combining deterministic metrics with LLM narrative generation.
 - **React + TypeScript + Tailwind CSS** frontend for production interaction.
 - **FastAPI** REST API (`GET /healthz`, `POST /api/v1/analyze`).
 - **MAF DevUI** for development-time agent inspection and workflow tracing.
@@ -51,10 +54,10 @@ Browser ►►► React UI (Vite + Tailwind, port 5173 dev / static in prod)
    ▼           ▼           ▼
 AnalystAgent  ReviewerAgent  AnalysisWorkflow
    │
-┌──┴──────────────┐
-▼                 ▼
-calculator.py    SummaryAnalyzer
-(deterministic)  (LLM narrative)
+┌──┴──────────────────────┐
+▼                          ▼
+calculator.py         UniversalAnalyzer / FinancialAnalyzer
+(deterministic)       (LLM narrative via prompt templates)
 ```
 
 **Layer responsibilities:**
@@ -63,7 +66,7 @@ calculator.py    SummaryAnalyzer
 |-------|------|----------------|
 | API | `app/api/` | FastAPI REST endpoints, CORS, static file serving |
 | Ingestion | `app/ingestion/` | File validation, type detection, metadata creation |
-| Conversion | `app/conversion/` | Text/Markdown extraction (local or MCP) |
+| Conversion | `app/conversion/` | Text/Markdown extraction (`local`, `markitdown`, or `mcp`) |
 | Chunking | `app/chunking/` | Split text into overlapping DocumentChunks |
 | Routing | `app/routing/` | Keyword-based AnalysisType detection |
 | Analyzers | `app/analyzers/` | LLM narrative generation per analysis type |
@@ -107,8 +110,13 @@ All settings are read from environment variables (or `.env`):
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `OPENAI_API_KEY` | _(required)_ | OpenAI API key |
-| `OPENAI_MODEL` | `gpt-4o` | Model to use |
-| `CONVERSION_MODE` | `local` | `local` or `mcp` |
+| `OPENAI_MODEL` | `gpt-4o` | Model to use for OpenAI provider |
+| `LLM_PROVIDER` | `openai` | `openai` \| `local` (HuggingFace on-device) |
+| `LOCAL_MODEL_ID` | `microsoft/Phi-3.5-mini-instruct` | HuggingFace model ID (used when `LLM_PROVIDER=local`) |
+| `HF_TOKEN` | _(empty)_ | HuggingFace access token for gated models |
+| `HF_CACHE_DIR` | `data/models` | Directory for cached HuggingFace model weights |
+| `CONVERSION_MODE` | `markitdown` | `local` \| `markitdown` \| `mcp` |
+| `MCP_ENDPOINT` | `http://localhost:3001/convert` | MCP server endpoint (used when `CONVERSION_MODE=mcp`) |
 | `LOG_LEVEL` | `INFO` | `DEBUG` \| `INFO` \| `WARNING` \| `ERROR` |
 | `AUDIT_LOG_PATH` | `data/audit.jsonl` | Audit log file path |
 | `LOCAL_ONLY_MODE` | `false` | Block all network calls when `true` |
@@ -250,14 +258,14 @@ docker/
 
 ---
 
-## Known Limitations (Phase 1)
+## Known Limitations
 
-- Only `SummaryAnalyzer` is fully implemented. `FinancialAnalyzer`, `ComparisonAnalyzer`,
-  `LegalAnalyzer`, `AuditAnalyzer`, and `CustomAnalyzer` are Phase 1 stubs.
-- `LocalConverter` only does plain-text pass-through. PDF/DOCX binary parsing requires
-  additional libraries (Phase 2).
-- `MCPConverter` requires a running MarkItDown MCP server at `localhost:3001`.
-- The `agent_framework` package (`agent-framework>=0.1.0`) must be available in the
+- `LocalConverter` only does plain-text pass-through (UTF-8 decode). Use
+  `CONVERSION_MODE=markitdown` for PDF, DOCX, XLSX, PPTX, HTML, and image support.
+- `MCPConverter` requires a running MarkItDown MCP server at the configured
+  `MCP_ENDPOINT` (default `localhost:3001`).
+- The `agent_framework` package (`agent-framework>=1.0.0`) must be available in the
   Python environment. If not installed, agents and workflows will fail to import.
-- Financial calculator uses a stub DataFrame in `AnalystAgent.run_financial_calculation`.
-  Full document-to-DataFrame extraction is a Phase 2 task.
+- Financial DataFrame extraction (`app/financial/extractor.py`) currently produces a
+  stub empty DataFrame when no structured tabular data is detected. Full document-to-
+  DataFrame extraction from arbitrary PDFs is a Phase 2 task.

@@ -208,7 +208,12 @@ def _parse_markdown_tables(text: str) -> list[pd.DataFrame]:
 
             if col_data:
                 df = pd.DataFrame(col_data).dropna(how="all")
-                if not df.empty:
+                if df.empty:
+                    logger.warning(
+                        "extractor_table_all_rows_dropped",
+                        detail="All rows were non-numeric and dropped from a parsed table.",
+                    )
+                else:
                     tables.append(df)
 
         i = k

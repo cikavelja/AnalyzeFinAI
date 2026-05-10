@@ -9,6 +9,7 @@ The loaded pipeline is cached in a module-level dict to avoid reloading on every
 from __future__ import annotations
 
 import asyncio
+import os
 from pathlib import Path
 from typing import AsyncIterator
 
@@ -34,8 +35,7 @@ def _local_model_path(model_id: str, cache_dir: str) -> str | None:
 
 # On CPU, 1024 tokens at ~1–3 tok/s = 5–17 minutes. Use 512 as a safe cap.
 # Override via LOCAL_MAX_NEW_TOKENS env var if you have a GPU and need longer outputs.
-import os as _os
-_MAX_NEW_TOKENS = int(_os.getenv("LOCAL_MAX_NEW_TOKENS", "512"))
+_MAX_NEW_TOKENS = int(os.getenv("LOCAL_MAX_NEW_TOKENS", "512"))
 
 
 def _build_pipeline(model_id: str, hf_token: str | None, cache_dir: str) -> object:
@@ -171,13 +171,14 @@ class LocalHuggingFaceProvider:
             thread = threading.Thread(target=_generate, daemon=True)
             thread.start()
 
-            loop = asyncio.get_event_loop()
-            for token_text in streamer:
-                if token_text:
-                    yield token_text
-                    await asyncio.sleep(0)  # yield control back to event loop
-
-            await loop.run_in_executor(None, thread.join)
+            loop = asyncio.get_running_loop()
+            try:
+                for token_text in streamer:
+                    if token_text:
+                        yield token_text
+                        await asyncio.sleep(0)  # yield control back to event loop
+            finally:
+                await loop.run_in_executor(None, thread.join)
 
         except AnalysisError:
             raise

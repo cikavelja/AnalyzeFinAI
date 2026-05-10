@@ -71,7 +71,7 @@ class FinancialAnalyzer:
         metric_dict: dict[str, float] = {}
         if metrics:
             for field, val in metrics.model_dump().items():
-                if isinstance(val, float | int) and val is not None:
+                if isinstance(val, float | int):
                     metric_dict[field] = float(val)
 
         result = AnalysisResult(

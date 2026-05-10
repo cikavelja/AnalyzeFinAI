@@ -34,7 +34,6 @@ class AnalysisRequest(BaseModel):
     prompt: str
     document_ids: list[UUID] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
-    options: dict[str, str] = Field(default_factory=dict)
 
 
 class AnalysisResult(BaseModel):

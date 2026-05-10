@@ -5,6 +5,7 @@ if the MCP server is unreachable.
 """
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 from uuid import UUID
 
@@ -45,7 +46,7 @@ class MCPConverter:
         ))
 
         try:
-            file_bytes = await __import__("asyncio").to_thread(Path(file_path).read_bytes)
+            file_bytes = await asyncio.to_thread(Path(file_path).read_bytes)
             async with httpx.AsyncClient(timeout=30) as client:
                 resp = await client.post(
                     self._endpoint,

@@ -71,12 +71,3 @@ def write_markdown_report(result: AnalysisResult, output_path: str) -> Path:
     path.write_text("\n".join(lines), encoding="utf-8")
     logger.info("report_written", path=str(path), result_id=str(result.id))
     return path.resolve()
-
-
-def write_json_report(result: AnalysisResult, output_path: str) -> Path:
-    """Write *result* as a JSON file to *output_path*."""
-    path = Path(output_path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(result.model_dump_json(indent=2), encoding="utf-8")
-    logger.info("json_report_written", path=str(path))
-    return path.resolve()

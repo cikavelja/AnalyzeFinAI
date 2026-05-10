@@ -18,13 +18,14 @@ from app.ingestion.document_loader import load_chunks
 from app.llm.factory import get_llm_provider
 from app.models.analysis import AnalysisRequest, AnalysisResult, AnalysisType
 from app.routing.router import route
+from app.storage.base import AbstractStorage
 from app.storage.filesystem import FilesystemStorage
 
 logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/api/v1", tags=["analysis"])
 
-_results_storage = FilesystemStorage(base_dir="data/results")
+_results_storage: AbstractStorage = FilesystemStorage(base_dir="data/results")
 
 
 @router.post("/analyze", response_model=AnalyzeResponse)
@@ -91,7 +92,7 @@ async def analyze(body: AnalyzeRequest) -> AnalyzeResponse:
 @router.get("/results/{request_id}", response_model=AnalyzeResponse)
 async def get_result(request_id: UUID) -> AnalyzeResponse:
     """Retrieve a previously persisted analysis result by request_id."""
-    storage_key = str(_results_storage._base / f"{request_id}.json")
+    storage_key = _results_storage.key_for(request_id, suffix=".json")
     try:
         if not await _results_storage.exists(storage_key):
             raise HTTPException(status_code=404, detail=f"Result {request_id} not found.")

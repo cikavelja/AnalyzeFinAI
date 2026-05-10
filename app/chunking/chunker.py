@@ -17,6 +17,9 @@ logger = structlog.get_logger(__name__)
 DEFAULT_CHUNK_SIZE = 2000   # characters per chunk
 DEFAULT_CHUNK_OVERLAP = 200  # characters of overlap between chunks
 
+# Keeps references to fire-and-forget audit tasks so they are not GC'd before completion.
+_bg_tasks: set[asyncio.Task] = set()
+
 
 def chunk_text(
     text: str,
@@ -60,11 +63,13 @@ def chunk_text(
     if loop is not None:
         from app.audit.logger import audit_logger  # noqa: PLC0415
         from app.models.audit import AuditEvent  # noqa: PLC0415
-        loop.create_task(audit_logger.emit(AuditEvent(
+        task = loop.create_task(audit_logger.emit(AuditEvent(
             event_type="chunking",
             status="started",
             detail=f"chunk_text started for document {document_id}",
         )))
+        _bg_tasks.add(task)
+        task.add_done_callback(_bg_tasks.discard)
 
     if not text or not text.strip():
         logger.warning("chunker_empty_text", document_id=str(document_id))
@@ -104,10 +109,12 @@ def chunk_text(
     if loop is not None:
         from app.audit.logger import audit_logger  # noqa: PLC0415
         from app.models.audit import AuditEvent  # noqa: PLC0415
-        loop.create_task(audit_logger.emit(AuditEvent(
+        task = loop.create_task(audit_logger.emit(AuditEvent(
             event_type="chunking",
             status="completed",
             detail=f"chunk_text completed: {len(chunks)} chunks for document {document_id}",
         )))
+        _bg_tasks.add(task)
+        task.add_done_callback(_bg_tasks.discard)
 
     return chunks

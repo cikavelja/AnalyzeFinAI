@@ -21,6 +21,9 @@ from app.models.audit import AuditEvent
 
 logger = structlog.get_logger(__name__)
 
+# Keeps references to fire-and-forget audit tasks so they are not GC'd before completion.
+_bg_tasks: set[asyncio.Task] = set()
+
 # ---------------------------------------------------------------------------
 # Keyword → AnalysisType mappings
 # Higher-priority types should appear first in the list.
@@ -106,11 +109,13 @@ def route(prompt: str) -> AnalysisType:
             )
             try:
                 loop = asyncio.get_running_loop()
-                loop.create_task(audit_logger.emit(AuditEvent(
+                task = loop.create_task(audit_logger.emit(AuditEvent(
                     event_type="routing",
                     status="matched",
                     detail=f"Routed to {analysis_type}",
                 )))
+                _bg_tasks.add(task)
+                task.add_done_callback(_bg_tasks.discard)
             except RuntimeError:
                 pass
             return analysis_type
@@ -118,11 +123,13 @@ def route(prompt: str) -> AnalysisType:
     logger.debug("router_no_match", fallback=_DEFAULT_TYPE)
     try:
         loop = asyncio.get_running_loop()
-        loop.create_task(audit_logger.emit(AuditEvent(
+        task = loop.create_task(audit_logger.emit(AuditEvent(
             event_type="routing",
             status="fallback",
             detail=f"No match; defaulted to {_DEFAULT_TYPE}",
         )))
+        _bg_tasks.add(task)
+        task.add_done_callback(_bg_tasks.discard)
     except RuntimeError:
         pass
     return _DEFAULT_TYPE

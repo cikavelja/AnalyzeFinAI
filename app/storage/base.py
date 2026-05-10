@@ -20,3 +20,7 @@ class AbstractStorage(Protocol):
     async def exists(self, storage_key: str) -> bool:
         """Return True if the storage key exists."""
         ...
+
+    def key_for(self, document_id: UUID, suffix: str = ".md") -> str:
+        """Return the storage key for *document_id* without touching the backend."""
+        ...

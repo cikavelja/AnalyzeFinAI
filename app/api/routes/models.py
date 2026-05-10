@@ -135,7 +135,17 @@ async def list_models() -> ModelsListResponse:
 @router.post("/download", response_model=ModelStatusResponse, status_code=202)
 async def download_model(body: DownloadRequest) -> ModelStatusResponse:
     """Trigger an async download of a model.  Returns 202 Accepted immediately."""
+    from fastapi import HTTPException
+
     model_id = body.model_id
+
+    if model_id not in _PRESET_IDS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"model_id '{model_id}' is not in the approved preset list. "
+                   f"Valid values: {sorted(_PRESET_IDS)}",
+        )
+
     current = _current_status(model_id)
 
     if current.status in {"ready", "downloading"}:

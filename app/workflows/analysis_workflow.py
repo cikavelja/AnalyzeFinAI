@@ -29,9 +29,13 @@ logger = structlog.get_logger(__name__)
 # Step executors — each receives the shared context dict and passes it on
 # ---------------------------------------------------------------------------
 
-@executor(input=str)
+@executor
 async def ingest_step(context, ctx: WorkflowContext[dict]) -> None:
-    """Step 1 — Ingest: load document metadata for each document ID."""
+    """Step 1 — Ingest: load document metadata for each document ID.
+
+    Accepts either a plain string (when triggered from DevUI) or a dict
+    (when chained from a previous step). Strings are coerced to a dict.
+    """
     from pathlib import Path  # noqa: PLC0415
 
     from app.audit.logger import audit_logger  # noqa: PLC0415

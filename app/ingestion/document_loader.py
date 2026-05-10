@@ -13,12 +13,13 @@ import structlog
 
 from app.conversion import get_converter
 from app.models.document import DocumentChunk
+from app.storage.base import AbstractStorage
 from app.storage.filesystem import FilesystemStorage
 
 logger = structlog.get_logger(__name__)
 
 _DEFAULT_UPLOAD_DIR = Path("data/uploads")
-_storage = FilesystemStorage()
+_storage: AbstractStorage = FilesystemStorage()
 
 # In-process chunk cache keyed by document_id string (cleared on process restart)
 _chunk_cache: dict[str, list[DocumentChunk]] = {}
@@ -60,7 +61,7 @@ async def load_chunks(
             continue
 
         # Filesystem cache hit: load pre-converted markdown
-        storage_key = str(_storage._base / f"{doc_id}.md")
+        storage_key = _storage.key_for(doc_id)
         if await _storage.exists(storage_key):
             try:
                 text = await _storage.load(storage_key)

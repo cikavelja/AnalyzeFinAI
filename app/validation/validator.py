@@ -31,6 +31,9 @@ def validate_result(result: AnalysisResult) -> list[str]:
     """
     issues: list[str] = []
 
+    if result is None:
+        raise ValidationError("result must not be None")
+
     if not result.summary:
         issues.append("Summary is empty.")
     elif len(result.summary) < _MIN_SUMMARY_LENGTH:

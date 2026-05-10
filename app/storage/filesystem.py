@@ -28,6 +28,10 @@ class FilesystemStorage:
         logger.debug("storage_saved", key=key, size=len(content))
         return str(path)
 
+    def key_for(self, document_id: UUID, suffix: str = ".md") -> str:
+        """Return the absolute storage key for *document_id* without touching the filesystem."""
+        return str(self._base / f"{document_id}{suffix}")
+
     async def load(self, storage_key: str) -> str:
         """Read and return the content at *storage_key*."""
         path = Path(storage_key)
