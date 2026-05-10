@@ -30,7 +30,7 @@ logger = structlog.get_logger(__name__)
 # ---------------------------------------------------------------------------
 
 @executor
-async def ingest_step(context, ctx: WorkflowContext[dict]) -> None:
+async def ingest_step(context: dict, ctx: WorkflowContext[dict]) -> None:
     """Step 1 — Ingest: load document metadata for each document ID.
 
     Accepts either a plain string (when triggered from DevUI) or a dict
