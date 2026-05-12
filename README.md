@@ -7,6 +7,7 @@
 
 ## Table of Contents
 
+- [Demo Video](#demo-video)
 - [Overview](#overview)
 - [Architecture](#architecture)
 - [Quickstart](#quickstart)
@@ -18,6 +19,12 @@
 - [Docker](#docker)
 - [Project Structure](#project-structure)
 - [Known Limitations](#known-limitations)
+
+---
+
+## Demo Video
+
+[![AnalizerAI Demo](https://img.youtube.com/vi/X4ccggrYcH8/0.jpg)](https://youtu.be/X4ccggrYcH8)
 
 ---
 
