@@ -23,6 +23,23 @@ _storage: AbstractStorage = FilesystemStorage()
 
 # In-process chunk cache keyed by document_id string (cleared on process restart)
 _chunk_cache: dict[str, list[DocumentChunk]] = {}
+_CHUNK_CACHE_MAX = 128  # max documents held in memory at once
+
+
+def _cache_put(key: str, chunks: list[DocumentChunk]) -> None:
+    """Insert into the chunk cache, evicting the oldest entry when full."""
+    if key in _chunk_cache:
+        _chunk_cache[key] = chunks
+        return
+    if len(_chunk_cache) >= _CHUNK_CACHE_MAX:
+        oldest = next(iter(_chunk_cache))
+        del _chunk_cache[oldest]
+    _chunk_cache[key] = chunks
+
+
+def evict_chunk_cache(document_id: str) -> None:
+    """Remove a document's chunks from the in-process cache (call on delete)."""
+    _chunk_cache.pop(document_id, None)
 
 
 async def load_chunks(
@@ -66,7 +83,7 @@ async def load_chunks(
             try:
                 text = await _storage.load(storage_key)
                 doc_chunks = chunk_text(text, doc_id)
-                _chunk_cache[cache_key] = doc_chunks
+                _cache_put(cache_key, doc_chunks)
                 chunks.extend(doc_chunks)
                 logger.debug("loader_storage_cache_hit", document_id=cache_key)
                 continue
@@ -85,7 +102,7 @@ async def load_chunks(
             except Exception as exc:
                 logger.warning("loader_storage_save_failed", document_id=cache_key, error=str(exc))
             doc_chunks = chunk_text(result.text_content, doc_id)
-            _chunk_cache[cache_key] = doc_chunks
+            _cache_put(cache_key, doc_chunks)
             chunks.extend(doc_chunks)
         except Exception as exc:
             logger.error("loader_conversion_failed", document_id=cache_key, error=str(exc))

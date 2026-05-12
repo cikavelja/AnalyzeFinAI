@@ -16,6 +16,7 @@ if __name__ == "__main__":
     # Deferred imports so agent construction (and API-key validation) only
     # happens when this script is actually executed, not when it is imported.
     from agent_framework.devui import serve
+
     from app.agents.analyst_agent import analyst_agent
     from app.agents.orchestrator_agent import orchestrator_agent
     from app.agents.reviewer_agent import reviewer_agent

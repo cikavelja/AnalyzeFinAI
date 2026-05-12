@@ -5,6 +5,8 @@ from pathlib import Path
 from uuid import uuid4
 
 import pytest
+import pytest_mock
+from pydantic import ValidationError
 
 from app.conversion.markitdown_converter import MarkitdownConverter
 from app.exceptions import ConversionError
@@ -58,7 +60,7 @@ async def test_markitdown_converter_result_is_frozen(
     converter: MarkitdownConverter, txt_file: str
 ) -> None:
     result = await converter.convert(txt_file, uuid4())
-    with pytest.raises(Exception):  # frozen Pydantic model raises on mutation
+    with pytest.raises(ValidationError):  # frozen Pydantic model raises on mutation
         result.text_content = "overwritten"  # type: ignore[misc]
 
 
@@ -81,7 +83,7 @@ async def test_markitdown_converter_directory_raises(
 
 
 async def test_markitdown_converter_library_error_raises_conversion_error(
-    converter: MarkitdownConverter, txt_file: str, mocker: pytest.MonkeyPatch
+    converter: MarkitdownConverter, txt_file: str, mocker: pytest_mock.MockerFixture
 ) -> None:
     mocker.patch.object(converter._md, "convert", side_effect=RuntimeError("boom"))
     with pytest.raises(ConversionError, match="MarkItDown failed"):

@@ -42,22 +42,22 @@ _ROUTING_TABLE: list[tuple[AnalysisType, frozenset[str]]] = [
         ),
     ),
     (
-        AnalysisType.LEGAL,
-        frozenset(
-            {
-                "legal", "contract", "clause", "liability", "indemnity", "termination",
-                "agreement", "obligation", "penalty", "compliance", "regulatory",
-                "jurisdiction", "dispute", "warranty", "representation",
-            }
-        ),
-    ),
-    (
         AnalysisType.AUDIT,
         frozenset(
             {
                 "audit", "internal audit", "control", "risk", "gap", "finding",
                 "policy", "procedure", "sox", "internal control", "weakness",
                 "remediation", "compliance audit",
+            }
+        ),
+    ),
+    (
+        AnalysisType.LEGAL,
+        frozenset(
+            {
+                "legal", "contract", "clause", "liability", "indemnity", "termination",
+                "agreement", "obligation", "penalty", "compliance", "regulatory",
+                "jurisdiction", "dispute", "warranty", "representation",
             }
         ),
     ),

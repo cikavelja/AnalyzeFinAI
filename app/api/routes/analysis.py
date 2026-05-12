@@ -84,6 +84,8 @@ async def analyze(body: AnalyzeRequest) -> AnalyzeResponse:
             model_used=result.model_used,
         )
 
+    except HTTPException:
+        raise
     except Exception as exc:
         logger.error("api_analyze_error", error=str(exc))
         raise HTTPException(status_code=500, detail="Internal server error") from exc

@@ -5,9 +5,9 @@ OpenAIProvider        — production OpenAI implementation using httpx.
 """
 from __future__ import annotations
 
-from typing import AsyncIterator, Protocol, runtime_checkable
-
 import json
+from collections.abc import AsyncIterator
+from typing import Protocol, runtime_checkable
 
 import httpx
 import structlog
@@ -92,7 +92,12 @@ class OpenAIProvider:
                 )
                 resp.raise_for_status()
                 data = resp.json()
-                return str(data["choices"][0]["message"]["content"])
+                try:
+                    return str(data["choices"][0]["message"]["content"])
+                except (KeyError, IndexError, TypeError) as exc:
+                    raise AnalysisError(
+                        f"Unexpected OpenAI response format: {exc}. Body: {data}"
+                    ) from exc
         except httpx.HTTPError as exc:
             logger.error("openai_http_error", error=str(exc))
             raise AnalysisError(f"OpenAI API error: {exc}") from exc
@@ -121,8 +126,14 @@ class OpenAIProvider:
                         payload = line[6:]
                         if payload.strip() == "[DONE]":
                             break
-                        chunk = json.loads(payload)
-                        delta = chunk["choices"][0]["delta"].get("content", "")
+                        try:
+                            chunk = json.loads(payload)
+                        except json.JSONDecodeError:
+                            continue
+                        try:
+                            delta = chunk["choices"][0]["delta"].get("content", "")
+                        except (KeyError, IndexError, TypeError):
+                            continue
                         if delta:
                             yield delta
         except httpx.HTTPError as exc:

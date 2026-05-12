@@ -8,7 +8,6 @@ import pytest
 from app.exceptions import IngestionError
 from app.ingestion.detector import detect_file_type
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

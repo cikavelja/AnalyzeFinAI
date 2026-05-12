@@ -16,8 +16,8 @@ from fastapi import APIRouter
 from app.api.schemas.models import (
     DownloadRequest,
     ModelPreset,
-    ModelStatusResponse,
     ModelsListResponse,
+    ModelStatusResponse,
 )
 from app.config import settings
 
@@ -63,6 +63,7 @@ _PRESET_IDS = {m.model_id for m in PRESET_MODELS}
 # ---------------------------------------------------------------------------
 
 _download_state: dict[str, ModelStatusResponse] = {}
+_bg_tasks: set[asyncio.Task] = set()
 
 
 def _cache_path(model_id: str) -> Path:
@@ -89,7 +90,7 @@ def _current_status(model_id: str) -> ModelStatusResponse:
 # Background download task
 # ---------------------------------------------------------------------------
 
-def _sync_download(model_id: str, hf_token: str | None, cache_dir: str) -> None:
+def _sync_download(model_id: str, hf_token: str | None) -> None:
     """Blocking download — runs in a thread pool executor."""
     from huggingface_hub import snapshot_download
 
@@ -108,7 +109,7 @@ async def _download_model_task(model_id: str, hf_token: str | None) -> None:
     )
     try:
         await asyncio.to_thread(
-            _sync_download, model_id, hf_token, settings.hf_cache_dir
+            _sync_download, model_id, hf_token
         )
         _download_state[model_id] = ModelStatusResponse(
             model_id=model_id, status="ready", progress_pct=100.0
@@ -153,8 +154,10 @@ async def download_model(body: DownloadRequest) -> ModelStatusResponse:
 
     token = body.hf_token or (settings.hf_token or None)
 
-    # Fire-and-forget background task
-    asyncio.create_task(_download_model_task(model_id, token))
+    # Fire-and-forget background task (hold reference to prevent GC mid-download)
+    task = asyncio.create_task(_download_model_task(model_id, token))
+    _bg_tasks.add(task)
+    task.add_done_callback(_bg_tasks.discard)
 
     _download_state[model_id] = ModelStatusResponse(
         model_id=model_id, status="downloading", progress_pct=0.0

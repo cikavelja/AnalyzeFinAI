@@ -1,14 +1,12 @@
 """Tests for app/financial/calculator.py"""
 from __future__ import annotations
 
-import numpy as np
 import pandas as pd
 import pytest
 
 from app.exceptions import CalculationError
 from app.financial.calculator import calculate_metrics
 from app.models.financial import FinancialMetrics
-
 
 # ---------------------------------------------------------------------------
 # Helpers

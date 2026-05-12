@@ -18,8 +18,8 @@ logger = structlog.get_logger(__name__)# ---------------------------------------
 # Validation constants
 # ---------------------------------------------------------------------------
 
-_REQUIRED_FIELDS = ("summary", "narrative", "analysis_type", "request_id")
-_MIN_SUMMARY_LENGTH = 20  # characters
+_REQUIRED_FIELDS = ("summary", "analysis_type", "request_id")
+_MIN_SUMMARY_LENGTH = 10  # characters — matches app/validation/validator.py
 
 
 # ---------------------------------------------------------------------------
@@ -32,7 +32,7 @@ async def validate_analysis_result(result_json: str) -> str:
 
     Checks performed:
     - All required fields are present and non-empty.
-    - Summary is at least 20 characters long.
+    - Summary is at least 10 characters long.
     - Warnings list is surfaced in the report.
     - Metrics dict is reported if present.
 

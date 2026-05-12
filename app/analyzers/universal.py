@@ -33,7 +33,7 @@ class UniversalAnalyzer:
         self,
         request: AnalysisRequest,
         chunks: list[DocumentChunk],
-        metrics: FinancialMetrics | None = None,
+        metrics: FinancialMetrics | None = None,  # required by AbstractAnalyzer Protocol; unused here
     ) -> AnalysisResult:
         """Analyse chunks using the prompt template for request.analysis_type."""
 

@@ -8,7 +8,6 @@ import pytest
 from app.chunking.chunker import DEFAULT_CHUNK_SIZE, chunk_text
 from app.models.document import DocumentChunk
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

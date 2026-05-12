@@ -33,7 +33,7 @@ def get_llm_provider(
     if effective_provider == "local":
         from app.llm.local_provider import LocalHuggingFaceProvider
 
-        return LocalHuggingFaceProvider(model_id=model_id or None)
+        return LocalHuggingFaceProvider(model_id=model_id)
 
     # Default: OpenAI
     return OpenAIProvider(model=model_id or None)

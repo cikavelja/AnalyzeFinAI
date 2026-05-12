@@ -1,11 +1,8 @@
 """Tests for app/routing/router.py"""
 from __future__ import annotations
 
-import pytest
-
 from app.models.analysis import AnalysisType
 from app.routing.router import route
-
 
 # ---------------------------------------------------------------------------
 # Financial routing

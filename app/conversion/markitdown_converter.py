@@ -50,7 +50,7 @@ class MarkitdownConverter:
         if not path.is_file():
             raise ConversionError(f"Path is not a file: {file_path}")
 
-        # Zip-bomb pre-flight check
+        # Zip-bomb pre-flight check + path traversal guard
         if path.suffix.lower() == ".zip":
             with zipfile.ZipFile(path, "r") as zf:
                 total_uncompressed = sum(e.file_size for e in zf.infolist())
@@ -59,6 +59,12 @@ class MarkitdownConverter:
                         f"ZIP uncompressed size {total_uncompressed:,} bytes exceeds "
                         f"the {_MAX_UNCOMPRESSED_BYTES // (1024 * 1024)} MB limit."
                     )
+                for entry in zf.infolist():
+                    entry_path = Path(entry.filename)
+                    if entry_path.is_absolute() or ".." in entry_path.parts:
+                        raise ConversionError(
+                            f"ZIP entry with dangerous path rejected: {entry.filename!r}"
+                        )
 
         try:
             result = await asyncio.to_thread(self._md.convert, str(path))

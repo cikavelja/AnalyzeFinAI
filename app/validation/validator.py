@@ -41,12 +41,6 @@ def validate_result(result: AnalysisResult) -> list[str]:
             f"Summary too short ({len(result.summary)} chars; min {_MIN_SUMMARY_LENGTH})."
         )
 
-    if not result.request_id:
-        issues.append("request_id is missing.")
-
-    if not result.analysis_type:
-        issues.append("analysis_type is missing.")
-
     if issues:
         logger.warning("validation_failed", issues=issues)
     else:

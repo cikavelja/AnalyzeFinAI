@@ -6,9 +6,8 @@ from uuid import uuid4
 import pandas as pd
 import pytest
 
-from app.financial.extractor import extract_dataframe, _clean_number
+from app.financial.extractor import _clean_number, extract_dataframe
 from app.models.document import DocumentChunk
-
 
 # ---------------------------------------------------------------------------
 # Helpers

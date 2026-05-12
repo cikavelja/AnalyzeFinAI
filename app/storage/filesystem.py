@@ -1,6 +1,7 @@
 """FilesystemStorage — persists converted document content to local disk."""
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 from uuid import UUID
 
@@ -21,10 +22,10 @@ class FilesystemStorage:
 
     async def save(self, document_id: UUID, content: str, suffix: str = ".md") -> str:
         """Write *content* to disk and return the relative storage key."""
-        self._base.mkdir(parents=True, exist_ok=True)
+        await asyncio.to_thread(self._base.mkdir, parents=True, exist_ok=True)
         key = f"{document_id}{suffix}"
         path = self._base / key
-        path.write_text(content, encoding="utf-8")
+        await asyncio.to_thread(path.write_text, content, encoding="utf-8")
         logger.debug("storage_saved", key=key, size=len(content))
         return str(path)
 
@@ -35,10 +36,10 @@ class FilesystemStorage:
     async def load(self, storage_key: str) -> str:
         """Read and return the content at *storage_key*."""
         path = Path(storage_key)
-        if not path.exists():
+        if not await asyncio.to_thread(path.exists):
             raise IngestionError(f"Storage key not found: {storage_key}")
-        return path.read_text(encoding="utf-8")
+        return await asyncio.to_thread(path.read_text, encoding="utf-8")
 
     async def exists(self, storage_key: str) -> bool:
         """Return True if the storage key exists on disk."""
-        return Path(storage_key).exists()
+        return await asyncio.to_thread(Path(storage_key).exists)

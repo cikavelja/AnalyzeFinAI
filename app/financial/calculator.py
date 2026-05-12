@@ -19,7 +19,6 @@ import pandas as pd
 from app.exceptions import CalculationError
 from app.models.financial import AnomalyRecord, FinancialMetrics
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -153,6 +152,15 @@ def calculate_metrics(df: pd.DataFrame) -> FinancialMetrics:
         if len(gp_series) >= 2:
             metrics.profit_trend_slope = float(
                 np.polyfit(range(len(gp_series)), gp_series.values, 1)[0]
+            )
+    elif "revenue" in df.columns and "cogs" in df.columns:
+        # Derive per-row gross profit from revenue and cogs when no explicit column exists
+        rev = pd.to_numeric(df["revenue"], errors="coerce")
+        cogs = pd.to_numeric(df["cogs"], errors="coerce")
+        derived_gp = (rev - cogs).dropna()
+        if len(derived_gp) >= 2:
+            metrics.profit_trend_slope = float(
+                np.polyfit(range(len(derived_gp)), derived_gp.values, 1)[0]
             )
 
     # ── Liquidity ──────────────────────────────────────────────────────────

@@ -51,7 +51,7 @@ class AuditLogger:
                 "audit_event_emitted",
                 event_type=event.event_type,
                 status=event.status,
-                request_id=str(event.request_id),
+                request_id=str(event.request_id) if event.request_id else None,
             )
         except Exception as exc:  # pragma: no cover
             logger.error("audit_emit_failed", error=str(exc))

@@ -232,9 +232,16 @@ def _parse_kv_patterns(text: str) -> pd.DataFrame | None:
     """
     row: dict[str, float] = {}
     for col, pattern in _KV_PATTERNS:
-        match = pattern.search(text)
-        if match:
-            val = _clean_number(match.group(1))
+        matches = pattern.findall(text)
+        if matches:
+            if len(matches) > 1:
+                logger.warning(
+                    "kv_multiple_matches_found",
+                    column=col,
+                    match_count=len(matches),
+                    using="first",
+                )
+            val = _clean_number(matches[0])
             if val is not None:
                 row[col] = val
 

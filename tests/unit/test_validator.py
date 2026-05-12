@@ -8,7 +8,6 @@ import pytest
 from app.exceptions import IngestionError
 from app.ingestion.validator import validate_file
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

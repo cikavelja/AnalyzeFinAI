@@ -13,6 +13,7 @@ from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from app.api.schemas.documents import UploadResponse
 from app.exceptions import IngestionError
+from app.ingestion.document_loader import evict_chunk_cache
 from app.ingestion.loader import load_document
 
 logger = structlog.get_logger(__name__)
@@ -65,18 +66,22 @@ async def upload_document(file: UploadFile = File(...)) -> UploadResponse:
         final_path = _UPLOAD_DIR / f"{metadata.id}{suffix}"
         tmp_path.rename(final_path)
 
-        logger.info(
-            "api_upload_ok",
-            document_id=str(metadata.id),
-            file=original_name,
-            size=metadata.file_size,
-        )
+        try:
+            logger.info(
+                "api_upload_ok",
+                document_id=str(metadata.id),
+                file=original_name,
+                size=metadata.file_size,
+            )
 
-        return UploadResponse(
-            document_id=metadata.id,
-            file_name=metadata.file_name,
-            file_size=metadata.file_size,
-        )
+            return UploadResponse(
+                document_id=metadata.id,
+                file_name=original_name,
+                file_size=metadata.file_size,
+            )
+        except Exception:
+            final_path.unlink(missing_ok=True)
+            raise
 
     except HTTPException:
         raise
@@ -105,3 +110,5 @@ async def delete_document(document_id: UUID) -> None:
 
     if not deleted_any:
         raise HTTPException(status_code=404, detail=f"Document {document_id} not found.")
+
+    evict_chunk_cache(str(document_id))

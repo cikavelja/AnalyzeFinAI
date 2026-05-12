@@ -2,11 +2,12 @@
 
 This is the default converter used when CONVERSION_MODE=local.
 Supported file types: .txt, .md, .csv, .json, .xml, .html (raw text pass-through).
-For other types, the raw bytes are decoded with errors='replace'.
+For other types, the raw bytes are decoded with UTF-8 with errors='replace'.
 ZIP files are explicitly rejected — use CONVERSION_MODE=markitdown for ZIP support.
 """
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 from uuid import UUID
 
@@ -55,10 +56,10 @@ class LocalConverter:
 
         try:
             if ext in _TEXT_EXTENSIONS:
-                text = path.read_text(encoding="utf-8", errors="replace")
+                text = await asyncio.to_thread(path.read_text, encoding="utf-8", errors="replace")
             else:
                 # Best-effort: decode bytes as UTF-8
-                raw = path.read_bytes()
+                raw = await asyncio.to_thread(path.read_bytes)
                 text = raw.decode("utf-8", errors="replace")
                 warnings.append(
                     f"Extension '{ext}' is not natively supported by LocalConverter. "

@@ -10,8 +10,8 @@ from __future__ import annotations
 
 import asyncio
 import os
+from collections.abc import AsyncIterator
 from pathlib import Path
-from typing import AsyncIterator
 
 import structlog
 
@@ -22,6 +22,8 @@ logger = structlog.get_logger(__name__)
 
 # Module-level pipeline cache: model_id → transformers pipeline object
 _pipeline_cache: dict[str, object] = {}
+# Per-model locks to prevent concurrent double-loads
+_pipeline_locks: dict[str, asyncio.Lock] = {}
 
 
 def _local_model_path(model_id: str, cache_dir: str) -> str | None:
@@ -76,11 +78,14 @@ def _build_pipeline(model_id: str, hf_token: str | None, cache_dir: str) -> obje
 
 
 async def _get_pipeline(model_id: str, hf_token: str | None, cache_dir: str) -> object:
-    """Return cached pipeline, loading it on first call."""
-    if model_id not in _pipeline_cache:
-        _pipeline_cache[model_id] = await asyncio.to_thread(
-            _build_pipeline, model_id, hf_token, cache_dir
-        )
+    """Return cached pipeline, loading it on first call (lock prevents double-load races)."""
+    if model_id not in _pipeline_locks:
+        _pipeline_locks[model_id] = asyncio.Lock()
+    async with _pipeline_locks[model_id]:
+        if model_id not in _pipeline_cache:
+            _pipeline_cache[model_id] = await asyncio.to_thread(
+                _build_pipeline, model_id, hf_token, cache_dir
+            )
     return _pipeline_cache[model_id]
 
 
@@ -152,8 +157,9 @@ class LocalHuggingFaceProvider:
             messages = _messages_to_prompt(system, user)
 
             # Load tokenizer from local path if available (avoids cache_dir kwarg issue).
-            tokenizer_src = _local_model_path(self.model_name, self._cache_dir) or self.model_name
-            token_arg: str | bool = (self._hf_token or False) if not _local_model_path(self.model_name, self._cache_dir) else False
+            local_path = _local_model_path(self.model_name, self._cache_dir)
+            tokenizer_src = local_path or self.model_name
+            token_arg: str | bool = (self._hf_token or False) if not local_path else False
             tokenizer: object = await asyncio.to_thread(
                 AutoTokenizer.from_pretrained,
                 tokenizer_src,
@@ -163,10 +169,15 @@ class LocalHuggingFaceProvider:
                 tokenizer,  # type: ignore[arg-type]
                 skip_prompt=True,
                 skip_special_tokens=True,
+                timeout=300.0,  # prevent infinite block if generation thread crashes
             )
 
             def _generate() -> None:
-                pipe(messages, max_new_tokens=_MAX_NEW_TOKENS, streamer=streamer)
+                try:
+                    pipe(messages, max_new_tokens=_MAX_NEW_TOKENS, streamer=streamer)
+                except Exception:
+                    streamer.end()  # unblock the iterator so the caller gets a clean stop
+                    raise
 
             thread = threading.Thread(target=_generate, daemon=True)
             thread.start()

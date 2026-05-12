@@ -101,23 +101,38 @@ def _strip_metadata_preamble(text: str) -> str:
     # 2. Strip YAML front-matter block (---\n...\n---)
     text = re.sub(r"^\s*---\s*\n.*?\n---\s*\n", "", text, flags=re.DOTALL)
 
-    # 3. Strip a leading block of "Key: value" lines (document properties preamble).
-    # Stop as soon as we hit a blank line followed by non-property content, or a heading.
+    # 3. Strip a leading block of known document-property key: value lines.
+    # Only keys in the whitelist are treated as metadata — this prevents financial
+    # data lines like "Revenue: $1,200,000" from being stripped.
+    _METADATA_KEYS = frozenset({
+        "author", "title", "subject", "creator", "producer", "keywords",
+        "created", "modified", "creationdate", "moddate", "company",
+        "manager", "category", "application", "revision", "template",
+        "description", "identifier", "language", "last modified by",
+        "content type", "content status",
+    })
+    _key_value_re = re.compile(r"^([A-Za-z][A-Za-z0-9 _-]{0,40}):\s*.+")
+
+    def _is_metadata_line(line: str) -> bool:
+        m = _key_value_re.match(line)
+        if not m:
+            return False
+        return m.group(1).strip().lower() in _METADATA_KEYS
+
     lines = text.splitlines(keepends=True)
-    key_value = re.compile(r"^[A-Za-z][A-Za-z0-9 _-]{0,40}:\s*.+")
     i = 0
     while i < len(lines):
         stripped = lines[i].strip()
         if not stripped:
             i += 1
             continue
-        if key_value.match(stripped):
+        if _is_metadata_line(stripped):
             i += 1
             continue
-        break  # first non-blank, non-key-value line — real content starts here
+        break  # first non-blank, non-metadata line — real content starts here
 
     # Only drop the preamble when it's meaningful (>=2 metadata lines)
-    metadata_lines = sum(1 for ln in lines[:i] if ln.strip() and key_value.match(ln.strip()))
+    metadata_lines = sum(1 for ln in lines[:i] if ln.strip() and _is_metadata_line(ln.strip()))
     if metadata_lines >= 2:
         text = "".join(lines[i:])
 
@@ -195,6 +210,7 @@ async def analyze_step(context: dict, ctx: WorkflowContext[dict]) -> None:
     from app.analyzers.financial import FinancialAnalyzer  # noqa: PLC0415
     from app.analyzers.universal import UniversalAnalyzer  # noqa: PLC0415
     from app.audit.logger import audit_logger  # noqa: PLC0415
+    from app.exceptions import CalculationError  # noqa: PLC0415
     from app.financial.calculator import calculate_metrics  # noqa: PLC0415
     from app.financial.extractor import extract_dataframe  # noqa: PLC0415
     from app.models.analysis import AnalysisRequest, AnalysisType  # noqa: PLC0415
@@ -219,7 +235,11 @@ async def analyze_step(context: dict, ctx: WorkflowContext[dict]) -> None:
 
     if analysis_type == AnalysisType.FINANCIAL:
         df = extract_dataframe(chunks)
-        metrics = calculate_metrics(df) if not df.empty else None
+        try:
+            metrics = calculate_metrics(df) if not df.empty else None
+        except CalculationError as exc:
+            logger.warning("analyze_step_metrics_failed", error=str(exc))
+            metrics = None
         analyzer_fin = FinancialAnalyzer()
         result = await analyzer_fin.analyze(request, chunks=chunks, metrics=metrics)
     else:
